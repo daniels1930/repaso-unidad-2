@@ -1,4 +1,16 @@
-# Recetario de métodos — Service NestJS/TypeORM (nombres genéricos)
+# Recetario de métodos — Service + Controller NestJS/TypeORM (nombres genéricos)
+
+> Nota general: en todos los controllers se asume que la entidad se inyecta así:
+>
+> ```typescript
+> @Controller('examples')
+> export class ExampleController {
+>     constructor(private readonly exampleService: ExampleService) {}
+>     // ...métodos de abajo
+> }
+> ```
+>
+> Y que `ParseIntPipe` se importa de `@nestjs/common` cuando se usa.
 
 ### 1. Crear un registro simple, sin relaciones
 
@@ -9,6 +21,15 @@
 async create(createExampleDto: CreateExampleDto): Promise<Example> {
     const newExample = this.exampleRepository.create(createExampleDto);
     return await this.exampleRepository.save(newExample);
+}
+```
+
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
 }
 ```
 
@@ -31,6 +52,15 @@ async create(createExampleDto: CreateExampleDto) {
         relatedExample,
     });
     return await this.exampleRepository.save(newExample);
+}
+```
+
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
 }
 ```
 
@@ -59,6 +89,15 @@ async create(createExampleDto: CreateExampleDto) {
     });
 
     return await this.exampleRepository.save(newExample);
+}
+```
+
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
 }
 ```
 
@@ -97,6 +136,15 @@ async create(createExampleDto: CreateExampleDto) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+```
+
 ---
 
 ### 5. Buscar todos, trayendo la relación (JOIN)
@@ -111,6 +159,15 @@ findAll() {
             relatedExample: true,
         },
     });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get()
+findAll() {
+    return this.exampleService.findAll();
 }
 ```
 
@@ -133,6 +190,15 @@ findAll() {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Get()
+findAll() {
+    return this.exampleService.findAll();
+}
+```
+
 ---
 
 ### 7. Buscar uno por id
@@ -142,6 +208,15 @@ findAll() {
 ```typescript
 findOne(id: number) {
     return this.exampleRepository.findOne({ where: { id } });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get(':id')
+findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.findOne(id);
 }
 ```
 
@@ -162,6 +237,15 @@ async findByRelatedField(value: string) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Get('by-related-field')
+findByRelatedField(@Query('value') value: string) {
+    return this.exampleService.findByRelatedField(value);
+}
+```
+
 ---
 
 ### 9. Buscar por texto parcial (LIKE / contiene)
@@ -179,6 +263,15 @@ async searchByName(text: string) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Get('search')
+searchByName(@Query('text') text: string) {
+    return this.exampleService.searchByName(text);
+}
+```
+
 ---
 
 ### 10. Actualizar campos simples (sin tocar relaciones)
@@ -190,6 +283,15 @@ relaciones, o cuando el update no toca ninguna relación.
 async update(id: number, updateExampleDto: UpdateExampleDto): Promise<Example | null> {
     await this.exampleRepository.update(id, updateExampleDto);
     return await this.exampleRepository.findOneBy({ id });
+}
+```
+
+**Controller:**
+
+```typescript
+@Patch(':id')
+update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
+    return this.exampleService.update(id, updateExampleDto);
 }
 ```
 
@@ -216,6 +318,15 @@ async update(id: number, updateExampleDto: UpdateExampleDto) {
     }
 
     return await this.exampleRepository.save({ ...example, ...updateExampleDto });
+}
+```
+
+**Controller:**
+
+```typescript
+@Patch(':id')
+update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
+    return this.exampleService.update(id, updateExampleDto);
 }
 ```
 
@@ -253,6 +364,15 @@ async update(id: number, updateExampleDto: UpdateExampleDto) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Patch(':id')
+update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
+    return this.exampleService.update(id, updateExampleDto);
+}
+```
+
 ---
 
 ### 13. Eliminar por id (simple, cualquier entidad)
@@ -267,6 +387,15 @@ async remove(id: number) {
         return { id };
     }
     return null;
+}
+```
+
+**Controller:**
+
+```typescript
+@Delete(':id')
+remove(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.remove(id);
 }
 ```
 
@@ -294,6 +423,15 @@ async remove(id: number) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Delete(':id')
+remove(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.remove(id);
+}
+```
+
 ---
 
 ### 15. Contar todos los registros
@@ -303,6 +441,17 @@ async remove(id: number) {
 ```typescript
 async count(): Promise<number> {
     return await this.exampleRepository.count();
+}
+```
+
+**Controller:**
+
+```typescript
+// OJO: esta ruta debe declararse ANTES de @Get(':id') en el controller,
+// si no, Nest intenta interpretar "count" como si fuera el id.
+@Get('count')
+count() {
+    return this.exampleService.count();
 }
 ```
 
@@ -317,6 +466,15 @@ async countByRelatedField(value: string): Promise<number> {
     return await this.exampleRepository.count({
         where: { relatedExample: { name: value } },
     });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('count/by-related')
+countByRelatedField(@Query('value') value: string) {
+    return this.exampleService.countByRelatedField(value);
 }
 ```
 
@@ -339,6 +497,15 @@ async create(createExampleDto: CreateExampleDto): Promise<Example> {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+```
+
 ---
 
 ### 18. Traer los N más recientes
@@ -351,6 +518,15 @@ async findLatest(limit: number) {
         order: { createdAt: 'DESC' },
         take: limit,
     });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('latest')
+findLatest(@Query('limit', ParseIntPipe) limit: number) {
+    return this.exampleService.findLatest(limit);
 }
 ```
 
@@ -368,6 +544,18 @@ async findPaginated(page: number, limit: number) {
         skip: (page - 1) * limit,
     });
     return { items, total, page, limit };
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('paginated')
+findPaginated(
+    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', ParseIntPipe) limit: number,
+) {
+    return this.exampleService.findPaginated(page, limit);
 }
 ```
 
@@ -399,6 +587,20 @@ findOne(id: number) {
         where: { id },
         relations: { relatedExample: true },
     });
+}
+```
+
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+
+@Get(':id')
+findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.findOne(id);
 }
 ```
 
@@ -449,6 +651,23 @@ async addRelatedExample(id: number, relatedExampleId: number) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+
+@Patch(':id/related-examples/:relatedExampleId')
+addRelatedExample(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('relatedExampleId', ParseIntPipe) relatedExampleId: number,
+) {
+    return this.exampleService.addRelatedExample(id, relatedExampleId);
+}
+```
+
 ---
 
 ### 22. Filtrar con operadores de comparación (`MoreThan`, `LessThan`, `Between`)
@@ -472,6 +691,25 @@ async findBetweenDates(start: Date, end: Date) {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Get('price/more-than')
+findMoreThan(@Query('value', ParseIntPipe) value: number) {
+    return this.exampleService.findMoreThan(value);
+}
+
+@Get('price/less-than')
+findLessThan(@Query('value', ParseIntPipe) value: number) {
+    return this.exampleService.findLessThan(value);
+}
+
+@Get('between-dates')
+findBetweenDates(@Query('start') start: string, @Query('end') end: string) {
+    return this.exampleService.findBetweenDates(new Date(start), new Date(end));
+}
+```
+
 ---
 
 ### 23. Filtrar por una lista de ids (`In`)
@@ -484,6 +722,17 @@ import { In } from 'typeorm';
 
 async findByIds(ids: number[]) {
     return await this.exampleRepository.find({ where: { id: In(ids) } });
+}
+```
+
+**Controller:**
+
+```typescript
+// se recibe como query string separado por comas, ej: /examples/by-ids?ids=1,2,3
+@Get('by-ids')
+findByIds(@Query('ids') ids: string) {
+    const idsArray = ids.split(',').map(Number);
+    return this.exampleService.findByIds(idsArray);
 }
 ```
 
@@ -513,6 +762,20 @@ async countGroupedByRelated() {
         .leftJoin('example.relatedExample', 'relatedExample')
         .groupBy('relatedExample.name')
         .getRawMany();
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('query-builder')
+findWithQueryBuilder(@Query('name') name: string) {
+    return this.exampleService.findWithQueryBuilder(name);
+}
+
+@Get('grouped-count')
+countGroupedByRelated() {
+    return this.exampleService.countGroupedByRelated();
 }
 ```
 
@@ -548,6 +811,15 @@ export class ExampleService {
 }
 ```
 
+**Controller:**
+
+```typescript
+@Post('with-transaction')
+createWithTransaction(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.createWithTransaction(createExampleDto);
+}
+```
+
 ---
 
 ### 26. Usar excepciones propias de NestJS (en vez de `throw new Error`)
@@ -578,6 +850,24 @@ async someValidation(value: number) {
     if (value < 0) {
         throw new BadRequestException('Value cannot be negative'); // devuelve 400
     }
+}
+```
+
+**Controller:**
+
+```typescript
+// El controller NO cambia en nada respecto a los bloques 1 y 7:
+// Nest detecta el tipo de excepción lanzada en el service y arma
+// automáticamente la respuesta HTTP con el código correcto.
+// No hace falta ningún try/catch en el controller.
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+
+@Get(':id')
+findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.findOne(id);
 }
 ```
 
@@ -637,6 +927,23 @@ export class CreateExampleDto {
     @IsOptional()
     @IsDateString()
     startDate?: string;
+}
+```
+
+**Controller:**
+
+```typescript
+// El controller tampoco cambia: el DTO se sigue recibiendo con @Body()
+// tal cual en el bloque 1. La validación ocurre antes de entrar al método,
+// gracias al ValidationPipe global registrado en main.ts:
+//
+//   app.useGlobalPipes(new ValidationPipe());
+//
+// Si algo no cumple las reglas del DTO, Nest responde 400 automáticamente
+// sin que el método del controller ni del service lleguen a ejecutarse.
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
 }
 ```
 
