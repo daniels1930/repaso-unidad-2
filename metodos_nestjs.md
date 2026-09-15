@@ -1,26 +1,28 @@
-# Recetario de métodos — Service + Controller NestJS/TypeORM (nombres genéricos)
+# Recetario de métodos — Service + Controller NestJS/TypeORM (con ejemplos reales)
 
-> Nota general: en todos los controllers se asume que la entidad se inyecta así:
+> En todos los controllers se asume una inyección estándar, por ejemplo:
 >
 > ```typescript
-> @Controller('examples')
-> export class ExampleController {
->     constructor(private readonly exampleService: ExampleService) {}
->     // ...métodos de abajo
+> @Controller('productos')
+> export class ProductoController {
+>     constructor(private readonly productoService: ProductoService) {}
 > }
 > ```
 >
-> Y que `ParseIntPipe` se importa de `@nestjs/common` cuando se usa.
+> Y que `ParseIntPipe` se importa de `@nestjs/common` cuando se necesita.
+
+---
 
 ### 1. Crear un registro simple, sin relaciones
 
-**Con esto podrías:** crear una entidad que solo tiene columnas propias
-(texto, números), sin depender de otra tabla.
+Cuando la entidad no depende de ninguna otra tabla — solo tiene sus
+propias columnas — el `create` es directo. Ejemplo: crear una
+**Categoría** de productos (solo tiene nombre).
 
 ```typescript
-async create(createExampleDto: CreateExampleDto): Promise<Example> {
-    const newExample = this.exampleRepository.create(createExampleDto);
-    return await this.exampleRepository.save(newExample);
+async create(createCategoriaDto: CreateCategoriaDto): Promise<Categoria> {
+    const nuevaCategoria = this.categoriaRepository.create(createCategoriaDto);
+    return await this.categoriaRepository.save(nuevaCategoria);
 }
 ```
 
@@ -28,8 +30,8 @@ async create(createExampleDto: CreateExampleDto): Promise<Example> {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createCategoriaDto: CreateCategoriaDto) {
+    return this.categoriaService.create(createCategoriaDto);
 }
 ```
 
@@ -37,21 +39,22 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ### 2. Crear un registro que depende de UNA entidad existente
 
-**Con esto podrías:** crear una entidad que necesita otra ya existente
-(ej: algo que se relaciona con un id que te mandan en el DTO).
+Aquí la entidad nueva necesita "engancharse" a otra que ya existe en la
+base de datos. Ejemplo típico: crear un **Pedido** que pertenece a un
+**Cliente** que ya está registrado (te llega su id en el DTO).
 
 ```typescript
-async create(createExampleDto: CreateExampleDto) {
-    const relatedExample = await this.relatedExampleService.findOne(createExampleDto.relatedExampleId);
-    if (!relatedExample) {
-        throw new Error('RelatedExample not found');
+async create(createPedidoDto: CreatePedidoDto) {
+    const cliente = await this.clienteService.findOne(createPedidoDto.clienteId);
+    if (!cliente) {
+        throw new Error('Cliente no encontrado');
     }
 
-    const newExample = this.exampleRepository.create({
-        ...createExampleDto,
-        relatedExample,
+    const nuevoPedido = this.pedidoRepository.create({
+        ...createPedidoDto,
+        cliente,
     });
-    return await this.exampleRepository.save(newExample);
+    return await this.pedidoRepository.save(nuevoPedido);
 }
 ```
 
@@ -59,8 +62,8 @@ async create(createExampleDto: CreateExampleDto) {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createPedidoDto: CreatePedidoDto) {
+    return this.pedidoService.create(createPedidoDto);
 }
 ```
 
@@ -68,27 +71,28 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ### 3. Crear una tabla intermedia (dos relaciones, sin columnas propias)
 
-**Con esto podrías:** crear una tabla que solo existe para unir dos
-entidades (relación muchos-a-muchos con tabla intermedia).
+Cuando necesitás una tabla que solo existe para unir dos entidades —
+típico de una relación muchos-a-muchos con tabla propia. Ejemplo: una
+**Inscripción** que une a un **Estudiante** con un **Curso**.
 
 ```typescript
-async create(createExampleDto: CreateExampleDto) {
-    const relatedExample = await this.relatedExampleService.findOne(createExampleDto.relatedExampleId);
-    const relatedExampleB = await this.relatedExampleBService.findOne(createExampleDto.relatedExampleBId);
+async create(createInscripcionDto: CreateInscripcionDto) {
+    const estudiante = await this.estudianteService.findOne(createInscripcionDto.estudianteId);
+    const curso = await this.cursoService.findOne(createInscripcionDto.cursoId);
 
-    if (!relatedExample) {
-        throw new Error('RelatedExample not found');
+    if (!estudiante) {
+        throw new Error('Estudiante no encontrado');
     }
-    if (!relatedExampleB) {
-        throw new Error('RelatedExampleB not found');
+    if (!curso) {
+        throw new Error('Curso no encontrado');
     }
 
-    const newExample = this.exampleRepository.create({
-        relatedExample,
-        relatedExampleB,
+    const nuevaInscripcion = this.inscripcionRepository.create({
+        estudiante,
+        curso,
     });
 
-    return await this.exampleRepository.save(newExample);
+    return await this.inscripcionRepository.save(nuevaInscripcion);
 }
 ```
 
@@ -96,8 +100,8 @@ async create(createExampleDto: CreateExampleDto) {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createInscripcionDto: CreateInscripcionDto) {
+    return this.inscripcionService.create(createInscripcionDto);
 }
 ```
 
@@ -105,34 +109,34 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ### 4. Crear un registro con relación + validar que NO exista duplicado
 
-**Con esto podrías:** evitar que se cree la misma asociación dos veces
-(ej: que la misma combinación de relaciones no se repita).
+Sirve para evitar que se repita la misma combinación dos veces. Ejemplo:
+que un mismo **Estudiante** no pueda inscribirse dos veces al mismo
+**Curso**.
 
 ```typescript
-async create(createExampleDto: CreateExampleDto) {
-    const relatedExample = await this.relatedExampleService.findOne(createExampleDto.relatedExampleId);
-    if (!relatedExample) {
-        throw new Error('RelatedExample not found');
+async create(createInscripcionDto: CreateInscripcionDto) {
+    const estudiante = await this.estudianteService.findOne(createInscripcionDto.estudianteId);
+    if (!estudiante) {
+        throw new Error('Estudiante no encontrado');
     }
 
-    const relatedExampleB = await this.relatedExampleBService.findOne(createExampleDto.relatedExampleBId);
-    if (!relatedExampleB) {
-        throw new Error('RelatedExampleB not found');
+    const curso = await this.cursoService.findOne(createInscripcionDto.cursoId);
+    if (!curso) {
+        throw new Error('Curso no encontrado');
     }
 
-    // Verifica que esa combinación no exista ya
-    const yaExiste = await this.exampleRepository.findOne({
+    const yaInscrito = await this.inscripcionRepository.findOne({
         where: {
-            relatedExample: { id: relatedExample.id },
-            relatedExampleB: { id: relatedExampleB.id },
+            estudiante: { id: estudiante.id },
+            curso: { id: curso.id },
         },
     });
-    if (yaExiste) {
-        throw new Error('This combination already exists');
+    if (yaInscrito) {
+        throw new Error('El estudiante ya está inscrito en este curso');
     }
 
-    const newExample = this.exampleRepository.create({ relatedExample, relatedExampleB });
-    return await this.exampleRepository.save(newExample);
+    const nuevaInscripcion = this.inscripcionRepository.create({ estudiante, curso });
+    return await this.inscripcionRepository.save(nuevaInscripcion);
 }
 ```
 
@@ -140,8 +144,8 @@ async create(createExampleDto: CreateExampleDto) {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createInscripcionDto: CreateInscripcionDto) {
+    return this.inscripcionService.create(createInscripcionDto);
 }
 ```
 
@@ -149,14 +153,15 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ### 5. Buscar todos, trayendo la relación (JOIN)
 
-**Con esto podrías:** listar todos los registros mostrando también su
-relación (ej: mostrar el objeto relacionado, no solo su id).
+Para listar registros mostrando también el objeto relacionado, no solo su
+id. Ejemplo: listar **Productos** mostrando el nombre completo de su
+**Categoría**, no solo `categoriaId`.
 
 ```typescript
 findAll() {
-    return this.exampleRepository.find({
+    return this.productoRepository.find({
         relations: {
-            relatedExample: true,
+            categoria: true,
         },
     });
 }
@@ -167,7 +172,7 @@ findAll() {
 ```typescript
 @Get()
 findAll() {
-    return this.exampleService.findAll();
+    return this.productoService.findAll();
 }
 ```
 
@@ -175,15 +180,16 @@ findAll() {
 
 ### 6. Buscar todos, trayendo DOS niveles de relación anidados
 
-**Con esto podrías:** listar registros mostrando su relación, y dentro de
-esa relación, otra relación más (anidada).
+Cuando la relación que traés tiene, a su vez, otra relación adentro.
+Ejemplo: listar **Pedidos** con su **Cliente**, y dentro del cliente, la
+**Ciudad** a la que pertenece.
 
 ```typescript
 findAll() {
-    return this.exampleRepository.find({
+    return this.pedidoRepository.find({
         relations: {
-            relatedExample: {
-                relatedExampleB: true,
+            cliente: {
+                ciudad: true,
             },
         },
     });
@@ -195,7 +201,7 @@ findAll() {
 ```typescript
 @Get()
 findAll() {
-    return this.exampleService.findAll();
+    return this.pedidoService.findAll();
 }
 ```
 
@@ -203,11 +209,12 @@ findAll() {
 
 ### 7. Buscar uno por id
 
-**Con esto podrías:** el `findOne` estándar de cualquier CRUD.
+El clásico `findOne` de cualquier CRUD. Ejemplo: buscar un **Producto**
+puntual por su id.
 
 ```typescript
 findOne(id: number) {
-    return this.exampleRepository.findOne({ where: { id } });
+    return this.productoRepository.findOne({ where: { id } });
 }
 ```
 
@@ -216,7 +223,7 @@ findOne(id: number) {
 ```typescript
 @Get(':id')
 findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.exampleService.findOne(id);
+    return this.productoService.findOne(id);
 }
 ```
 
@@ -224,14 +231,15 @@ findOne(@Param('id', ParseIntPipe) id: number) {
 
 ### 8. Buscar filtrando por un campo de la RELACIÓN (no propio)
 
-**Con esto podrías:** "traer todos los registros cuya relación tenga tal
-valor" (ej: filtrar por un campo que vive en la tabla relacionada).
+Para cuando el filtro no vive en la propia tabla sino en la tabla
+relacionada. Ejemplo: traer todos los **Productos** cuya **Categoría**
+se llame "Electrónica".
 
 ```typescript
-async findByRelatedField(value: string) {
-    return await this.exampleRepository.find({
-        where: { relatedExample: { name: value } },
-        relations: { relatedExample: true },
+async findByCategoria(nombreCategoria: string) {
+    return await this.productoRepository.find({
+        where: { categoria: { nombre: nombreCategoria } },
+        relations: { categoria: true },
         order: { id: 'ASC' },
     });
 }
@@ -240,9 +248,9 @@ async findByRelatedField(value: string) {
 **Controller:**
 
 ```typescript
-@Get('by-related-field')
-findByRelatedField(@Query('value') value: string) {
-    return this.exampleService.findByRelatedField(value);
+@Get('por-categoria')
+findByCategoria(@Query('nombre') nombre: string) {
+    return this.productoService.findByCategoria(nombre);
 }
 ```
 
@@ -250,15 +258,16 @@ findByRelatedField(@Query('value') value: string) {
 
 ### 9. Buscar por texto parcial (LIKE / contiene)
 
-**Con esto podrías:** un buscador tipo "encuentra registros cuyo nombre
-contenga tal palabra" (búsqueda parcial, no exacta).
+Un buscador tipo "encontrame los productos cuyo nombre contenga esta
+palabra", sin que tenga que coincidir exacto. Ejemplo: buscar
+**Productos** que contengan "camisa" en el nombre.
 
 ```typescript
 import { Like } from 'typeorm';
 
-async searchByName(text: string) {
-    return await this.exampleRepository.find({
-        where: { name: Like(`%${text}%`) },
+async searchByName(texto: string) {
+    return await this.productoRepository.find({
+        where: { nombre: Like(`%${texto}%`) },
     });
 }
 ```
@@ -266,9 +275,9 @@ async searchByName(text: string) {
 **Controller:**
 
 ```typescript
-@Get('search')
-searchByName(@Query('text') text: string) {
-    return this.exampleService.searchByName(text);
+@Get('buscar')
+searchByName(@Query('texto') texto: string) {
+    return this.productoService.searchByName(texto);
 }
 ```
 
@@ -276,13 +285,13 @@ searchByName(@Query('text') text: string) {
 
 ### 10. Actualizar campos simples (sin tocar relaciones)
 
-**Con esto podrías:** actualizar columnas propias de una entidad sin
-relaciones, o cuando el update no toca ninguna relación.
+Cuando el update solo toca columnas propias. Ejemplo: actualizar el
+precio y el stock de un **Producto**.
 
 ```typescript
-async update(id: number, updateExampleDto: UpdateExampleDto): Promise<Example | null> {
-    await this.exampleRepository.update(id, updateExampleDto);
-    return await this.exampleRepository.findOneBy({ id });
+async update(id: number, updateProductoDto: UpdateProductoDto): Promise<Producto | null> {
+    await this.productoRepository.update(id, updateProductoDto);
+    return await this.productoRepository.findOneBy({ id });
 }
 ```
 
@@ -290,8 +299,8 @@ async update(id: number, updateExampleDto: UpdateExampleDto): Promise<Example | 
 
 ```typescript
 @Patch(':id')
-update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
-    return this.exampleService.update(id, updateExampleDto);
+update(@Param('id', ParseIntPipe) id: number, @Body() updateProductoDto: UpdateProductoDto) {
+    return this.productoService.update(id, updateProductoDto);
 }
 ```
 
@@ -299,25 +308,26 @@ update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateEx
 
 ### 11. Actualizar reasignando UNA relación
 
-**Con esto podrías:** cambiar a qué entidad relacionada apunta un
-registro ya existente.
+Para cambiar a qué entidad relacionada apunta un registro que ya existe.
+Ejemplo: reasignar un **Pedido** a otro **Cliente** (por ejemplo, se
+cargó mal el pedido).
 
 ```typescript
-async update(id: number, updateExampleDto: UpdateExampleDto) {
-    const example = await this.exampleRepository.findOneBy({ id });
-    if (!example) {
-        throw new Error('Example not found');
+async update(id: number, updatePedidoDto: UpdatePedidoDto) {
+    const pedido = await this.pedidoRepository.findOneBy({ id });
+    if (!pedido) {
+        throw new Error('Pedido no encontrado');
     }
 
-    if (updateExampleDto.relatedExampleId) {
-        const relatedExample = await this.relatedExampleService.findOne(updateExampleDto.relatedExampleId);
-        if (!relatedExample) {
-            throw new Error('RelatedExample not found');
+    if (updatePedidoDto.clienteId) {
+        const cliente = await this.clienteService.findOne(updatePedidoDto.clienteId);
+        if (!cliente) {
+            throw new Error('Cliente no encontrado');
         }
-        example.relatedExample = relatedExample;
+        pedido.cliente = cliente;
     }
 
-    return await this.exampleRepository.save({ ...example, ...updateExampleDto });
+    return await this.pedidoRepository.save({ ...pedido, ...updatePedidoDto });
 }
 ```
 
@@ -325,8 +335,8 @@ async update(id: number, updateExampleDto: UpdateExampleDto) {
 
 ```typescript
 @Patch(':id')
-update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
-    return this.exampleService.update(id, updateExampleDto);
+update(@Param('id', ParseIntPipe) id: number, @Body() updatePedidoDto: UpdatePedidoDto) {
+    return this.pedidoService.update(id, updatePedidoDto);
 }
 ```
 
@@ -334,33 +344,34 @@ update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateEx
 
 ### 12. Actualizar reasignando DOS relaciones (tabla intermedia)
 
-**Con esto podrías:** cambiar a qué entidades apunta una fila de una tabla
-intermedia ya existente.
+Igual que el anterior, pero cuando la fila que actualizás pertenece a una
+tabla intermedia con dos relaciones. Ejemplo: cambiar el **Estudiante**
+o el **Curso** de una **Inscripción** ya existente.
 
 ```typescript
-async update(id: number, updateExampleDto: UpdateExampleDto) {
-    const example = await this.exampleRepository.findOneBy({ id });
-    if (!example) {
-        throw new Error('Example not found');
+async update(id: number, updateInscripcionDto: UpdateInscripcionDto) {
+    const inscripcion = await this.inscripcionRepository.findOneBy({ id });
+    if (!inscripcion) {
+        throw new Error('Inscripción no encontrada');
     }
 
-    if (updateExampleDto.relatedExampleId) {
-        const relatedExample = await this.relatedExampleService.findOne(updateExampleDto.relatedExampleId);
-        if (!relatedExample) {
-            throw new Error('RelatedExample not found');
+    if (updateInscripcionDto.estudianteId) {
+        const estudiante = await this.estudianteService.findOne(updateInscripcionDto.estudianteId);
+        if (!estudiante) {
+            throw new Error('Estudiante no encontrado');
         }
-        example.relatedExample = relatedExample;
+        inscripcion.estudiante = estudiante;
     }
 
-    if (updateExampleDto.relatedExampleBId) {
-        const relatedExampleB = await this.relatedExampleBService.findOne(updateExampleDto.relatedExampleBId);
-        if (!relatedExampleB) {
-            throw new Error('RelatedExampleB not found');
+    if (updateInscripcionDto.cursoId) {
+        const curso = await this.cursoService.findOne(updateInscripcionDto.cursoId);
+        if (!curso) {
+            throw new Error('Curso no encontrado');
         }
-        example.relatedExampleB = relatedExampleB;
+        inscripcion.curso = curso;
     }
 
-    return await this.exampleRepository.save(example);
+    return await this.inscripcionRepository.save(inscripcion);
 }
 ```
 
@@ -368,8 +379,8 @@ async update(id: number, updateExampleDto: UpdateExampleDto) {
 
 ```typescript
 @Patch(':id')
-update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
-    return this.exampleService.update(id, updateExampleDto);
+update(@Param('id', ParseIntPipe) id: number, @Body() updateInscripcionDto: UpdateInscripcionDto) {
+    return this.inscripcionService.update(id, updateInscripcionDto);
 }
 ```
 
@@ -377,13 +388,13 @@ update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateEx
 
 ### 13. Eliminar por id (simple, cualquier entidad)
 
-**Con esto podrías:** el `remove` estándar de cualquier CRUD, incluso
-tablas intermedias — borrar nunca necesita resolver relaciones.
+El `remove` estándar, incluso para tablas intermedias — borrar nunca
+necesita resolver relaciones. Ejemplo: eliminar una **Categoría**.
 
 ```typescript
 async remove(id: number) {
-    const result = await this.exampleRepository.delete(id);
-    if (result.affected) {
+    const resultado = await this.categoriaRepository.delete(id);
+    if (resultado.affected) {
         return { id };
     }
     return null;
@@ -395,7 +406,7 @@ async remove(id: number) {
 ```typescript
 @Delete(':id')
 remove(@Param('id', ParseIntPipe) id: number) {
-    return this.exampleService.remove(id);
+    return this.categoriaService.remove(id);
 }
 ```
 
@@ -403,20 +414,21 @@ remove(@Param('id', ParseIntPipe) id: number) {
 
 ### 14. Eliminar validando que no tenga dependencias
 
-**Con esto podrías:** impedir borrar un registro si todavía tiene otros
-registros dependiendo de él (evitar dejar datos huérfanos).
+Para evitar dejar datos huérfanos: no dejar borrar un registro si otros
+todavía dependen de él. Ejemplo: no permitir borrar una **Categoría** si
+todavía tiene **Productos** asociados.
 
 ```typescript
 async remove(id: number) {
-    const dependientes = await this.relatedExampleRepository.count({
-        where: { example: { id } },
+    const productosAsociados = await this.productoRepository.count({
+        where: { categoria: { id } },
     });
-    if (dependientes > 0) {
-        throw new Error('Cannot delete: there are dependent records');
+    if (productosAsociados > 0) {
+        throw new Error('No se puede eliminar: hay productos asociados a esta categoría');
     }
 
-    const result = await this.exampleRepository.delete(id);
-    if (result.affected) {
+    const resultado = await this.categoriaRepository.delete(id);
+    if (resultado.affected) {
         return { id };
     }
     return null;
@@ -428,7 +440,7 @@ async remove(id: number) {
 ```typescript
 @Delete(':id')
 remove(@Param('id', ParseIntPipe) id: number) {
-    return this.exampleService.remove(id);
+    return this.categoriaService.remove(id);
 }
 ```
 
@@ -436,22 +448,22 @@ remove(@Param('id', ParseIntPipe) id: number) {
 
 ### 15. Contar todos los registros
 
-**Con esto podrías:** "¿cuántos registros hay en total?".
+Para responder algo tipo "¿cuántos pedidos hay en total?".
 
 ```typescript
 async count(): Promise<number> {
-    return await this.exampleRepository.count();
+    return await this.pedidoRepository.count();
 }
 ```
 
 **Controller:**
 
 ```typescript
-// OJO: esta ruta debe declararse ANTES de @Get(':id') en el controller,
+// OJO: esta ruta debe declararse ANTES de @Get(':id'),
 // si no, Nest intenta interpretar "count" como si fuera el id.
 @Get('count')
 count() {
-    return this.exampleService.count();
+    return this.pedidoService.count();
 }
 ```
 
@@ -459,12 +471,12 @@ count() {
 
 ### 16. Contar filtrando por relación
 
-**Con esto podrías:** "¿cuántos registros tiene tal relación específica?".
+Para responder "¿cuántos productos tiene tal categoría?".
 
 ```typescript
-async countByRelatedField(value: string): Promise<number> {
-    return await this.exampleRepository.count({
-        where: { relatedExample: { name: value } },
+async countByCategoria(nombreCategoria: string): Promise<number> {
+    return await this.productoRepository.count({
+        where: { categoria: { nombre: nombreCategoria } },
     });
 }
 ```
@@ -472,9 +484,9 @@ async countByRelatedField(value: string): Promise<number> {
 **Controller:**
 
 ```typescript
-@Get('count/by-related')
-countByRelatedField(@Query('value') value: string) {
-    return this.exampleService.countByRelatedField(value);
+@Get('count/por-categoria')
+countByCategoria(@Query('nombre') nombre: string) {
+    return this.productoService.countByCategoria(nombre);
 }
 ```
 
@@ -482,18 +494,19 @@ countByRelatedField(@Query('value') value: string) {
 
 ### 17. Verificar si ya existe antes de crear (evitar duplicados por nombre)
 
-**Con esto podrías:** que no se puedan crear dos registros con el mismo
-valor en un campo único (ej: mismo nombre).
+Para que no se puedan crear dos registros con el mismo valor en un campo
+que debería ser único. Ejemplo: no permitir dos **Categorías** con el
+mismo nombre.
 
 ```typescript
-async create(createExampleDto: CreateExampleDto): Promise<Example> {
-    const existe = await this.exampleRepository.existsBy({ name: createExampleDto.name });
+async create(createCategoriaDto: CreateCategoriaDto): Promise<Categoria> {
+    const existe = await this.categoriaRepository.existsBy({ nombre: createCategoriaDto.nombre });
     if (existe) {
-        throw new Error('A record with this name already exists');
+        throw new Error('Ya existe una categoría con ese nombre');
     }
 
-    const newExample = this.exampleRepository.create(createExampleDto);
-    return await this.exampleRepository.save(newExample);
+    const nuevaCategoria = this.categoriaRepository.create(createCategoriaDto);
+    return await this.categoriaRepository.save(nuevaCategoria);
 }
 ```
 
@@ -501,8 +514,8 @@ async create(createExampleDto: CreateExampleDto): Promise<Example> {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createCategoriaDto: CreateCategoriaDto) {
+    return this.categoriaService.create(createCategoriaDto);
 }
 ```
 
@@ -510,11 +523,11 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ### 18. Traer los N más recientes
 
-**Con esto podrías:** "los últimos 5 registros creados".
+Ejemplo: mostrar los últimos 5 **Pedidos** que entraron.
 
 ```typescript
 async findLatest(limit: number) {
-    return await this.exampleRepository.find({
+    return await this.pedidoRepository.find({
         order: { createdAt: 'DESC' },
         take: limit,
     });
@@ -524,9 +537,9 @@ async findLatest(limit: number) {
 **Controller:**
 
 ```typescript
-@Get('latest')
+@Get('recientes')
 findLatest(@Query('limit', ParseIntPipe) limit: number) {
-    return this.exampleService.findLatest(limit);
+    return this.pedidoService.findLatest(limit);
 }
 ```
 
@@ -534,12 +547,12 @@ findLatest(@Query('limit', ParseIntPipe) limit: number) {
 
 ### 19. Paginar resultados (con total)
 
-**Con esto podrías:** un listado con paginación real, mostrando página
-actual y total de registros.
+Para un listado con paginación real, mostrando página actual y total de
+registros. Ejemplo: listado paginado de **Productos** para un catálogo.
 
 ```typescript
 async findPaginated(page: number, limit: number) {
-    const [items, total] = await this.exampleRepository.findAndCount({
+    const [items, total] = await this.productoRepository.findAndCount({
         take: limit,
         skip: (page - 1) * limit,
     });
@@ -550,12 +563,12 @@ async findPaginated(page: number, limit: number) {
 **Controller:**
 
 ```typescript
-@Get('paginated')
+@Get('paginado')
 findPaginated(
     @Query('page', ParseIntPipe) page: number,
     @Query('limit', ParseIntPipe) limit: number,
 ) {
-    return this.exampleService.findPaginated(page, limit);
+    return this.productoService.findPaginated(page, limit);
 }
 ```
 
@@ -563,29 +576,29 @@ findPaginated(
 
 ### 20. Relación `@OneToOne` (uno a uno)
 
-**Con esto podrías:** crear una entidad que tiene exactamente UN registro
-relacionado único de otra tabla (ej: un registro que tiene un único
-"detalle" o "perfil" asociado, y viceversa).
+Para cuando una entidad tiene exactamente UN registro relacionado y
+único de otra tabla. Ejemplo: un **Usuario** que tiene un único
+**Perfil** con su foto y biografía.
 
 ```typescript
-// entidad Example
-@OneToOne(() => RelatedExample, { cascade: true })
-@JoinColumn({ name: 'related_example_id' })
-relatedExample: RelatedExample;
+// entidad Usuario
+@OneToOne(() => Perfil, { cascade: true })
+@JoinColumn({ name: 'perfil_id' })
+perfil: Perfil;
 
 // service
-async create(createExampleDto: CreateExampleDto) {
-    const newExample = this.exampleRepository.create({
-        ...createExampleDto,
-        relatedExample: createExampleDto.relatedExample, // objeto completo, se crea en cascada
+async create(createUsuarioDto: CreateUsuarioDto) {
+    const nuevoUsuario = this.usuarioRepository.create({
+        ...createUsuarioDto,
+        perfil: createUsuarioDto.perfil, // objeto completo, se crea en cascada
     });
-    return await this.exampleRepository.save(newExample);
+    return await this.usuarioRepository.save(nuevoUsuario);
 }
 
 findOne(id: number) {
-    return this.exampleRepository.findOne({
+    return this.usuarioRepository.findOne({
         where: { id },
-        relations: { relatedExample: true },
+        relations: { perfil: true },
     });
 }
 ```
@@ -594,13 +607,13 @@ findOne(id: number) {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createUsuarioDto: CreateUsuarioDto) {
+    return this.usuarioService.create(createUsuarioDto);
 }
 
 @Get(':id')
 findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.exampleService.findOne(id);
+    return this.usuarioService.findOne(id);
 }
 ```
 
@@ -608,46 +621,47 @@ findOne(@Param('id', ParseIntPipe) id: number) {
 
 ### 21. Relación `@ManyToMany` DIRECTA (sin service de tabla intermedia)
 
-**Con esto podrías:** cuando NO te piden una tabla intermedia con su propio
-CRUD, sino una relación muchos-a-muchos simple manejada por TypeORM
-automáticamente (usa una tabla intermedia oculta que tú no controlas).
+Para cuando NO necesitás una tabla intermedia con su propio CRUD, sino
+una relación muchos-a-muchos simple que maneja TypeORM automáticamente.
+Ejemplo: un **Libro** puede tener varios **Autores**, y no hace falta
+gestionar "autoría" como entidad aparte.
 
 ```typescript
-// entidad Example
-@ManyToMany(() => RelatedExample)
-@JoinTable({ name: 'example_related_example' }) // solo en el lado "dueño" de la relación
-relatedExamples: RelatedExample[];
+// entidad Libro
+@ManyToMany(() => Autor)
+@JoinTable({ name: 'libro_autor' }) // solo en el lado "dueño" de la relación
+autores: Autor[];
 
-// service — crear asignando varias relaciones a la vez
-async create(createExampleDto: CreateExampleDto) {
-    const relatedExamples = await this.relatedExampleRepository.findBy({
-        id: In(createExampleDto.relatedExampleIds), // array de ids
+// service — crear asignando varios autores a la vez
+async create(createLibroDto: CreateLibroDto) {
+    const autores = await this.autorRepository.findBy({
+        id: In(createLibroDto.autorIds), // array de ids
     });
 
-    const newExample = this.exampleRepository.create({
-        ...createExampleDto,
-        relatedExamples,
+    const nuevoLibro = this.libroRepository.create({
+        ...createLibroDto,
+        autores,
     });
-    return await this.exampleRepository.save(newExample);
+    return await this.libroRepository.save(nuevoLibro);
 }
 
-// agregar una relación más a un registro ya existente
-async addRelatedExample(id: number, relatedExampleId: number) {
-    const example = await this.exampleRepository.findOne({
+// agregar un autor más a un libro ya existente
+async addAutor(id: number, autorId: number) {
+    const libro = await this.libroRepository.findOne({
         where: { id },
-        relations: { relatedExamples: true },
+        relations: { autores: true },
     });
-    if (!example) {
-        throw new Error('Example not found');
+    if (!libro) {
+        throw new Error('Libro no encontrado');
     }
 
-    const relatedExample = await this.relatedExampleRepository.findOneBy({ id: relatedExampleId });
-    if (!relatedExample) {
-        throw new Error('RelatedExample not found');
+    const autor = await this.autorRepository.findOneBy({ id: autorId });
+    if (!autor) {
+        throw new Error('Autor no encontrado');
     }
 
-    example.relatedExamples.push(relatedExample);
-    return await this.exampleRepository.save(example);
+    libro.autores.push(autor);
+    return await this.libroRepository.save(libro);
 }
 ```
 
@@ -655,16 +669,16 @@ async addRelatedExample(id: number, relatedExampleId: number) {
 
 ```typescript
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createLibroDto: CreateLibroDto) {
+    return this.libroService.create(createLibroDto);
 }
 
-@Patch(':id/related-examples/:relatedExampleId')
-addRelatedExample(
+@Patch(':id/autores/:autorId')
+addAutor(
     @Param('id', ParseIntPipe) id: number,
-    @Param('relatedExampleId', ParseIntPipe) relatedExampleId: number,
+    @Param('autorId', ParseIntPipe) autorId: number,
 ) {
-    return this.exampleService.addRelatedExample(id, relatedExampleId);
+    return this.libroService.addAutor(id, autorId);
 }
 ```
 
@@ -672,41 +686,41 @@ addRelatedExample(
 
 ### 22. Filtrar con operadores de comparación (`MoreThan`, `LessThan`, `Between`)
 
-**Con esto podrías:** "traer registros con precio mayor a X", "traer
-registros creados entre dos fechas".
+Para cosas como "traer productos con precio mayor a X" o "pedidos hechos
+entre dos fechas".
 
 ```typescript
 import { MoreThan, LessThan, Between } from 'typeorm';
 
-async findMoreThan(value: number) {
-    return await this.exampleRepository.find({ where: { price: MoreThan(value) } });
+async findMoreExpensiveThan(valor: number) {
+    return await this.productoRepository.find({ where: { precio: MoreThan(valor) } });
 }
 
-async findLessThan(value: number) {
-    return await this.exampleRepository.find({ where: { price: LessThan(value) } });
+async findCheaperThan(valor: number) {
+    return await this.productoRepository.find({ where: { precio: LessThan(valor) } });
 }
 
-async findBetweenDates(start: Date, end: Date) {
-    return await this.exampleRepository.find({ where: { createdAt: Between(start, end) } });
+async findPedidosBetweenDates(inicio: Date, fin: Date) {
+    return await this.pedidoRepository.find({ where: { createdAt: Between(inicio, fin) } });
 }
 ```
 
 **Controller:**
 
 ```typescript
-@Get('price/more-than')
-findMoreThan(@Query('value', ParseIntPipe) value: number) {
-    return this.exampleService.findMoreThan(value);
+@Get('precio/mayor-a')
+findMoreExpensiveThan(@Query('valor', ParseIntPipe) valor: number) {
+    return this.productoService.findMoreExpensiveThan(valor);
 }
 
-@Get('price/less-than')
-findLessThan(@Query('value', ParseIntPipe) value: number) {
-    return this.exampleService.findLessThan(value);
+@Get('precio/menor-a')
+findCheaperThan(@Query('valor', ParseIntPipe) valor: number) {
+    return this.productoService.findCheaperThan(valor);
 }
 
-@Get('between-dates')
-findBetweenDates(@Query('start') start: string, @Query('end') end: string) {
-    return this.exampleService.findBetweenDates(new Date(start), new Date(end));
+@Get('pedidos/entre-fechas')
+findPedidosBetweenDates(@Query('inicio') inicio: string, @Query('fin') fin: string) {
+    return this.pedidoService.findPedidosBetweenDates(new Date(inicio), new Date(fin));
 }
 ```
 
@@ -714,25 +728,25 @@ findBetweenDates(@Query('start') start: string, @Query('end') end: string) {
 
 ### 23. Filtrar por una lista de ids (`In`)
 
-**Con esto podrías:** "traer solo los registros cuyos ids estén en esta
-lista" (útil para selección múltiple desde el frontend).
+Útil cuando el frontend te manda una selección múltiple. Ejemplo clásico:
+traer los **Productos** de un carrito de compras a partir de sus ids.
 
 ```typescript
 import { In } from 'typeorm';
 
 async findByIds(ids: number[]) {
-    return await this.exampleRepository.find({ where: { id: In(ids) } });
+    return await this.productoRepository.find({ where: { id: In(ids) } });
 }
 ```
 
 **Controller:**
 
 ```typescript
-// se recibe como query string separado por comas, ej: /examples/by-ids?ids=1,2,3
-@Get('by-ids')
+// se recibe como query string separado por comas, ej: /productos/por-ids?ids=1,2,3
+@Get('por-ids')
 findByIds(@Query('ids') ids: string) {
     const idsArray = ids.split(',').map(Number);
-    return this.exampleService.findByIds(idsArray);
+    return this.productoService.findByIds(idsArray);
 }
 ```
 
@@ -740,27 +754,29 @@ findByIds(@Query('ids') ids: string) {
 
 ### 24. Consulta con QueryBuilder (cuando `find()` no alcanza)
 
-**Con esto podrías:** consultas más complejas: joins manuales, agregaciones
-(`COUNT`, `SUM`), condiciones dinámicas que `find()` no arma fácil.
+Para joins manuales, agregaciones (`COUNT`, `SUM`) o condiciones dinámicas
+que `find()` no arma fácil. Ejemplo: buscar **Productos** por nombre con
+join a categoría, y un reporte de cuántos **Pedidos** hizo cada
+**Cliente**.
 
 ```typescript
-async findWithQueryBuilder(name: string) {
-    return await this.exampleRepository
-        .createQueryBuilder('example')
-        .leftJoinAndSelect('example.relatedExample', 'relatedExample')
-        .where('example.name LIKE :name', { name: `%${name}%` })
-        .orderBy('example.id', 'ASC')
+async findWithQueryBuilder(nombre: string) {
+    return await this.productoRepository
+        .createQueryBuilder('producto')
+        .leftJoinAndSelect('producto.categoria', 'categoria')
+        .where('producto.nombre LIKE :nombre', { nombre: `%${nombre}%` })
+        .orderBy('producto.id', 'ASC')
         .getMany();
 }
 
-// ejemplo con conteo agrupado
-async countGroupedByRelated() {
-    return await this.exampleRepository
-        .createQueryBuilder('example')
-        .select('relatedExample.name', 'relatedExampleName')
-        .addSelect('COUNT(example.id)', 'total')
-        .leftJoin('example.relatedExample', 'relatedExample')
-        .groupBy('relatedExample.name')
+// reporte: cuántos pedidos hizo cada cliente
+async countPedidosPorCliente() {
+    return await this.pedidoRepository
+        .createQueryBuilder('pedido')
+        .select('cliente.nombre', 'clienteNombre')
+        .addSelect('COUNT(pedido.id)', 'total')
+        .leftJoin('pedido.cliente', 'cliente')
+        .groupBy('cliente.nombre')
         .getRawMany();
 }
 ```
@@ -769,13 +785,13 @@ async countGroupedByRelated() {
 
 ```typescript
 @Get('query-builder')
-findWithQueryBuilder(@Query('name') name: string) {
-    return this.exampleService.findWithQueryBuilder(name);
+findWithQueryBuilder(@Query('nombre') nombre: string) {
+    return this.productoService.findWithQueryBuilder(nombre);
 }
 
-@Get('grouped-count')
-countGroupedByRelated() {
-    return this.exampleService.countGroupedByRelated();
+@Get('reportes/pedidos-por-cliente')
+countPedidosPorCliente() {
+    return this.pedidoService.countPedidosPorCliente();
 }
 ```
 
@@ -783,28 +799,29 @@ countGroupedByRelated() {
 
 ### 25. Transacción (varias operaciones que deben tener éxito juntas)
 
-**Con esto podrías:** cuando necesitas hacer 2+ operaciones en la BD y, si
-una falla, se deben deshacer todas (ej: crear un `Example` y descontar
-stock de otra tabla al mismo tiempo).
+Para cuando necesitás hacer 2+ operaciones y, si una falla, hay que
+deshacer todo. Ejemplo clásico de tienda: crear un **Pedido** y, en el
+mismo momento, descontar el **Stock** del producto — si algo sale mal, no
+querés que se descuente el stock sin que exista el pedido.
 
 ```typescript
 import { DataSource } from 'typeorm';
 
 @Injectable()
-export class ExampleService {
+export class PedidoService {
     constructor(private dataSource: DataSource) {}
 
-    async createWithTransaction(createExampleDto: CreateExampleDto) {
+    async createWithTransaction(createPedidoDto: CreatePedidoDto) {
         return await this.dataSource.transaction(async (manager) => {
-            const newExample = manager.create(Example, createExampleDto);
-            const savedExample = await manager.save(newExample);
+            const nuevoPedido = manager.create(Pedido, createPedidoDto);
+            const pedidoGuardado = await manager.save(nuevoPedido);
 
-            // otra operación relacionada, dentro de la misma transacción
-            await manager.update(RelatedExample, createExampleDto.relatedExampleId, {
+            // descuenta el stock del producto, dentro de la misma transacción
+            await manager.update(Producto, createPedidoDto.productoId, {
                 stock: () => 'stock - 1',
             });
 
-            return savedExample;
+            return pedidoGuardado;
             // si algo falla en cualquier punto, TypeORM revierte TODO automáticamente
         });
     }
@@ -814,9 +831,9 @@ export class ExampleService {
 **Controller:**
 
 ```typescript
-@Post('with-transaction')
-createWithTransaction(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.createWithTransaction(createExampleDto);
+@Post('con-transaccion')
+createWithTransaction(@Body() createPedidoDto: CreatePedidoDto) {
+    return this.pedidoService.createWithTransaction(createPedidoDto);
 }
 ```
 
@@ -824,31 +841,32 @@ createWithTransaction(@Body() createExampleDto: CreateExampleDto) {
 
 ### 26. Usar excepciones propias de NestJS (en vez de `throw new Error`)
 
-**Con esto podrías:** que los errores devuelvan el código HTTP correcto
-(404, 409, etc.) en vez de un genérico 500 "Internal server error".
+Para que los errores devuelvan el código HTTP correcto (404, 409, etc.)
+en vez de un genérico 500. Ejemplo: 404 si el **Producto** no existe, 409
+si la **Categoría** ya está registrada.
 
 ```typescript
 import { NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 
 async findOne(id: number) {
-    const example = await this.exampleRepository.findOneBy({ id });
-    if (!example) {
-        throw new NotFoundException(`Example with id ${id} not found`); // devuelve 404
+    const producto = await this.productoRepository.findOneBy({ id });
+    if (!producto) {
+        throw new NotFoundException(`Producto con id ${id} no encontrado`); // devuelve 404
     }
-    return example;
+    return producto;
 }
 
-async create(createExampleDto: CreateExampleDto) {
-    const existe = await this.exampleRepository.existsBy({ name: createExampleDto.name });
+async create(createCategoriaDto: CreateCategoriaDto) {
+    const existe = await this.categoriaRepository.existsBy({ nombre: createCategoriaDto.nombre });
     if (existe) {
-        throw new ConflictException('A record with this name already exists'); // devuelve 409
+        throw new ConflictException('Ya existe una categoría con ese nombre'); // devuelve 409
     }
     // ...
 }
 
-async someValidation(value: number) {
-    if (value < 0) {
-        throw new BadRequestException('Value cannot be negative'); // devuelve 400
+async someValidation(valor: number) {
+    if (valor < 0) {
+        throw new BadRequestException('El valor no puede ser negativo'); // devuelve 400
     }
 }
 ```
@@ -856,18 +874,17 @@ async someValidation(value: number) {
 **Controller:**
 
 ```typescript
-// El controller NO cambia en nada respecto a los bloques 1 y 7:
-// Nest detecta el tipo de excepción lanzada en el service y arma
-// automáticamente la respuesta HTTP con el código correcto.
-// No hace falta ningún try/catch en el controller.
+// El controller no cambia respecto a los bloques 1 y 7: Nest detecta
+// el tipo de excepción lanzada en el service y arma automáticamente
+// la respuesta HTTP con el código correcto. No hace falta try/catch aquí.
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createCategoriaDto: CreateCategoriaDto) {
+    return this.categoriaService.create(createCategoriaDto);
 }
 
 @Get(':id')
 findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.exampleService.findOne(id);
+    return this.productoService.findOne(id);
 }
 ```
 
@@ -875,58 +892,41 @@ findOne(@Param('id', ParseIntPipe) id: number) {
 
 ### 27. Validaciones en el DTO con `class-validator`
 
-**Con esto podrías:** que NestJS rechace automáticamente datos mal
-formados antes de que lleguen al service (requiere `ValidationPipe` global
-en `main.ts`: `app.useGlobalPipes(new ValidationPipe())`).
+Para que NestJS rechace automáticamente datos mal formados antes de que
+lleguen al service (requiere `ValidationPipe` global en `main.ts`:
+`app.useGlobalPipes(new ValidationPipe())`). Ejemplo: validar los datos
+al crear un **Producto**.
 
 ```typescript
-import {
-    IsString,
-    IsNotEmpty,
-    IsInt,
-    IsOptional,
-    IsEmail,
-    MinLength,
-    MaxLength,
-    Min,
-    Max,
-    IsPositive,
-    IsBoolean,
-    IsDateString,
-} from 'class-validator';
+import { IsString, IsNotEmpty, IsInt, IsOptional, MaxLength, Min, IsPositive, IsBoolean } from 'class-validator';
 
-export class CreateExampleDto {
+export class CreateProductoDto {
     @IsString()
     @IsNotEmpty()
-    @MaxLength(50)
-    name: string;
+    @MaxLength(80)
+    nombre: string;
 
     @IsOptional()
     @IsString()
     @MaxLength(255)
-    description?: string;
+    descripcion?: string;
 
     @IsInt()
     @IsPositive()
-    relatedExampleId: number;
+    categoriaId: number;
 
-    @IsOptional()
-    @IsEmail()
-    email?: string;
+    @IsInt()
+    @Min(0)
+    precio: number;
 
     @IsOptional()
     @IsInt()
     @Min(0)
-    @Max(100)
-    percentage?: number;
+    stock?: number;
 
     @IsOptional()
     @IsBoolean()
-    isActive?: boolean;
-
-    @IsOptional()
-    @IsDateString()
-    startDate?: string;
+    disponible?: boolean;
 }
 ```
 
@@ -935,17 +935,302 @@ export class CreateExampleDto {
 ```typescript
 // El controller tampoco cambia: el DTO se sigue recibiendo con @Body()
 // tal cual en el bloque 1. La validación ocurre antes de entrar al método,
-// gracias al ValidationPipe global registrado en main.ts:
-//
-//   app.useGlobalPipes(new ValidationPipe());
-//
-// Si algo no cumple las reglas del DTO, Nest responde 400 automáticamente
-// sin que el método del controller ni del service lleguen a ejecutarse.
+// gracias al ValidationPipe global registrado en main.ts.
+// Si algo no cumple las reglas del DTO, Nest responde 400 automáticamente.
 @Post()
-create(@Body() createExampleDto: CreateExampleDto) {
-    return this.exampleService.create(createExampleDto);
+create(@Body() createProductoDto: CreateProductoDto) {
+    return this.productoService.create(createProductoDto);
 }
 ```
+
+---
+
+### 28. Buscar por texto parcial ignorando mayúsculas y minúsculas (`ILike`)
+
+Igual que `Like`, pero sin importar si el texto está en mayúsculas o
+minúsculas — muy usado con PostgreSQL. Ejemplo: buscar un **Cliente**
+por nombre, sin que importe cómo lo escribió el usuario ("juan",
+"Juan" o "JUAN" deberían encontrar lo mismo).
+
+```typescript
+import { ILike } from 'typeorm';
+
+async searchByName(texto: string) {
+    return await this.clienteRepository.find({
+        where: { nombre: ILike(`%${texto}%`) },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('buscar')
+searchByName(@Query('texto') texto: string) {
+    return this.clienteService.searchByName(texto);
+}
+```
+
+---
+
+### 29. Filtrar por valores mayores o iguales (`MoreThanOrEqual`)
+
+Ejemplo: encontrar **Productos** con un precio de 100.000 o más.
+
+```typescript
+import { MoreThanOrEqual } from 'typeorm';
+
+async findMoreThanOrEqual(valor: number) {
+    return await this.productoRepository.find({
+        where: { precio: MoreThanOrEqual(valor) },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('precio/desde')
+findMoreThanOrEqual(@Query('valor', ParseIntPipe) valor: number) {
+    return this.productoService.findMoreThanOrEqual(valor);
+}
+```
+
+---
+
+### 30. Filtrar por valores menores o iguales (`LessThanOrEqual`)
+
+Ejemplo: encontrar **Productos** con un precio de 50.000 o menos (para un
+filtro de "hasta cierto presupuesto").
+
+```typescript
+import { LessThanOrEqual } from 'typeorm';
+
+async findLessThanOrEqual(valor: number) {
+    return await this.productoRepository.find({
+        where: { precio: LessThanOrEqual(valor) },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('precio/hasta')
+findLessThanOrEqual(@Query('valor', ParseIntPipe) valor: number) {
+    return this.productoService.findLessThanOrEqual(valor);
+}
+```
+
+---
+
+### 31. Buscar registros donde un campo sea NULL (`IsNull`)
+
+Para encontrar registros que todavía no tienen algo asignado. Ejemplo:
+listar **Clientes** que no cargaron ningún correo electrónico.
+
+`IsNull()` equivale a `WHERE columna IS NULL`.
+
+```typescript
+import { IsNull } from 'typeorm';
+
+async findWithoutEmail() {
+    return await this.clienteRepository.find({
+        where: { email: IsNull() },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('sin-email')
+findWithoutEmail() {
+    return this.clienteService.findWithoutEmail();
+}
+```
+
+---
+
+### 32. Negar una condición (`Not`)
+
+Para buscar todo lo que NO cumpla cierta condición. Ejemplo: traer todos
+los **Pedidos** cuyo estado no sea "cancelado".
+
+`Not()` también sirve para negar otros operadores, como `Not(In([...]))`
+o `Not(IsNull())`.
+
+```typescript
+import { Not } from 'typeorm';
+
+async findNoCancelados() {
+    return await this.pedidoRepository.find({
+        where: { estado: Not('cancelado') },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('no-cancelados')
+findNoCancelados() {
+    return this.pedidoService.findNoCancelados();
+}
+```
+
+---
+
+### 33. Excepciones HTTP estándar en NestJS
+
+Para que cada error tenga el código HTTP que le corresponde, en vez de
+que todo termine como un 500 genérico. Las excepciones se lanzan desde el
+service, y NestJS arma automáticamente la respuesta HTTP.
+
+| Excepción en NestJS             | Código HTTP | Cuándo usarla                                                  |
+| ------------------------------- | ----------- | -------------------------------------------------------------- |
+| `BadRequestException`           | 400         | Datos de entrada con formato o validaciones incorrectas.       |
+| `UnauthorizedException`         | 401         | Falta de credenciales o token expirado/inválido.               |
+| `ForbiddenException`            | 403         | Está autenticado, pero no tiene permiso para esa acción.       |
+| `NotFoundException`             | 404         | El recurso solicitado no existe.                               |
+| `MethodNotAllowedException`     | 405         | El verbo HTTP usado no está soportado en esa ruta.             |
+| `NotAcceptableException`        | 406         | El formato pedido no es aceptable según las cabeceras.         |
+| `RequestTimeoutException`       | 408         | Se agotó el tiempo de respuesta.                               |
+| `ConflictException`             | 409         | Conflicto con el estado actual (ej. un valor único duplicado). |
+| `GoneException`                 | 410         | El recurso existió, pero se eliminó permanentemente.           |
+| `PayloadTooLargeException`      | 413         | El archivo o body de la petición supera el límite permitido.   |
+| `UnsupportedMediaTypeException` | 415         | Tipo de contenido no soportado por el servidor.                |
+| `UnprocessableEntityException`  | 422         | Errores semánticos de validación más detallados.               |
+| `InternalServerErrorException`  | 500         | Error no controlado o fallo inesperado.                        |
+| `NotImplementedException`       | 501         | Funcionalidad todavía no implementada.                         |
+| `BadGatewayException`           | 502         | Falla en un servicio upstream o proxy intermediario.           |
+| `ServiceUnavailableException`   | 503         | El servidor está sobrecargado o en mantenimiento.              |
+| `GatewayTimeoutException`       | 504         | Se agotó el tiempo esperando una respuesta externa.            |
+
+**Ejemplo: `NotFoundException`** — devolver 404 cuando el **Producto**
+buscado no existe.
+
+```typescript
+import { NotFoundException } from '@nestjs/common';
+
+async findOne(id: number) {
+    const producto = await this.productoRepository.findOneBy({ id });
+    if (!producto) {
+        throw new NotFoundException(`Producto con id ${id} no encontrado`);
+    }
+    return producto;
+}
+```
+
+**Controller:**
+
+```typescript
+@Get(':id')
+findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.productoService.findOne(id);
+}
+```
+
+**Ejemplo: `ConflictException`** — indicar que ya existe una
+**Categoría** con ese nombre.
+
+```typescript
+import { ConflictException } from '@nestjs/common';
+
+async create(createCategoriaDto: CreateCategoriaDto) {
+    const existe = await this.categoriaRepository.existsBy({
+        nombre: createCategoriaDto.nombre,
+    });
+
+    if (existe) {
+        throw new ConflictException('Ya existe una categoría con ese nombre');
+    }
+
+    const nuevaCategoria = this.categoriaRepository.create(createCategoriaDto);
+    return await this.categoriaRepository.save(nuevaCategoria);
+}
+```
+
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createCategoriaDto: CreateCategoriaDto) {
+    return this.categoriaService.create(createCategoriaDto);
+}
+```
+
+**Ejemplo: `BadRequestException`** — rechazar un valor negativo en un
+descuento aplicado a un **Pedido**.
+
+```typescript
+import { BadRequestException } from '@nestjs/common';
+
+async aplicarDescuento(valor: number) {
+    if (valor < 0) {
+        throw new BadRequestException('El descuento no puede ser negativo');
+    }
+}
+```
+
+**Controller:**
+
+```typescript
+@Post('aplicar-descuento')
+aplicarDescuento(@Body('valor') valor: number) {
+    return this.pedidoService.aplicarDescuento(valor);
+}
+```
+
+**Ejemplo: `UnauthorizedException`** — el **Usuario** no mandó
+credenciales válidas al intentar loguearse.
+
+```typescript
+import { UnauthorizedException } from '@nestjs/common';
+
+async authenticate() {
+    const autenticado = false;
+    if (!autenticado) {
+        throw new UnauthorizedException('Credenciales inválidas o faltantes');
+    }
+}
+```
+
+**Controller:**
+
+```typescript
+@Post('login')
+authenticate() {
+    return this.usuarioService.authenticate();
+}
+```
+
+**Ejemplo: `ForbiddenException`** — un **Usuario** autenticado, pero sin
+permisos para borrar un **Pedido** ajeno.
+
+```typescript
+import { ForbiddenException } from '@nestjs/common';
+
+async checkPermission() {
+    const tienePermiso = false;
+    if (!tienePermiso) {
+        throw new ForbiddenException('No tienes permiso para realizar esta acción');
+    }
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('verificar-permiso')
+checkPermission() {
+    return this.usuarioService.checkPermission();
+}
+```
+
+**Regla importante:** el controller nunca necesita `try/catch` para estas
+excepciones. Se lanzan desde el service y NestJS arma la respuesta HTTP
+automáticamente.
 
 ---
 
@@ -980,3 +1265,9 @@ create(@Body() createExampleDto: CreateExampleDto) {
 | Varias operaciones que deben ocurrir juntas (transacción) | 25              |
 | Que los errores devuelvan el código HTTP correcto         | 26              |
 | Validar el formato de los datos que llegan (DTO)          | 27              |
+| Buscar texto ignorando mayúsculas/minúsculas (`ILike`)    | 28              |
+| Filtrar por mayor o igual que (`MoreThanOrEqual`)         | 29              |
+| Filtrar por menor o igual que (`LessThanOrEqual`)         | 30              |
+| Buscar valores NULL (`IsNull`)                            | 31              |
+| Negar una condición (`Not`)                               | 32              |
+| Manejar excepciones HTTP estándar                         | 33              |

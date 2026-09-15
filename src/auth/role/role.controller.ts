@@ -3,14 +3,19 @@ import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/commo
 import { RoleService } from './role.service';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
+import { RoleOutDto } from './dto/role-out.dto';
 
 @Controller('role')
 export class RoleController {
     constructor(private readonly roleService: RoleService) {}
 
     @Post()
-    create(@Body() createRoleDto: CreateRoleDto) {
-        return this.roleService.create(createRoleDto);
+    async create(@Body() createRoleDto: CreateRoleDto) {
+        const rolCreated = await this.roleService.create(createRoleDto);
+        const rolOutDto: RoleOutDto = {
+            name: rolCreated.name,
+        };
+        return rolOutDto;
     }
 
     @Get()
