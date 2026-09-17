@@ -1239,40 +1239,524 @@ respuesta HTTP automáticamente.
 
 ---
 
+### 34. Buscar registros cuyo campo empiece con un texto (`StartsWith`)
+
+`Like` con el patrón `texto%` (el `%` al final, no al principio) busca
+coincidencias que EMPIECEN con ese texto. _(Ejemplo real: traer los
+Customers cuyo nombre empiece con "A")_
+
+```typescript
+import { Like } from 'typeorm';
+
+async findStartingWith(text: string) {
+    return await this.exampleRepository.find({
+        where: { field: Like(`${text}%`) },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('starts-with')
+findStartingWith(@Query('text') text: string) {
+    return this.exampleService.findStartingWith(text);
+}
+```
+
+---
+
+### 35. Buscar por id de una relación `ManyToOne` (variante rápida del bloque 8)
+
+Cuando lo único que te interesa filtrar es el id del relacionado, no
+otro campo suyo. _(Ejemplo real: traer todos los Products de una
+Category puntual por su id)_
+
+```typescript
+async findByRelatedExampleId(relatedExampleId: number) {
+    return await this.exampleRepository.find({
+        where: { relatedExample: { id: relatedExampleId } },
+        relations: { relatedExample: true },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('by-related-id')
+findByRelatedExampleId(@Query('relatedExampleId', ParseIntPipe) relatedExampleId: number) {
+    return this.exampleService.findByRelatedExampleId(relatedExampleId);
+}
+```
+
+---
+
+### 36. Buscar por id de una relación `ManyToMany` (con `QueryBuilder`)
+
+Cuando la relación es muchos-a-muchos, conviene usar `QueryBuilder`
+con `innerJoin` para filtrar por el id del relacionado sin
+duplicar filas. _(Ejemplo real: traer los Roles que tengan asignado
+tal Permission por su id)_
+
+```typescript
+async findByRelatedExampleId(relatedExampleId: number) {
+    return await this.exampleRepository
+        .createQueryBuilder('example')
+        .innerJoin('example.relatedExamples', 'relatedExample')
+        .where('relatedExample.id = :relatedExampleId', { relatedExampleId })
+        .getMany();
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('by-related-id')
+findByRelatedExampleId(@Query('relatedExampleId', ParseIntPipe) relatedExampleId: number) {
+    return this.exampleService.findByRelatedExampleId(relatedExampleId);
+}
+```
+
+---
+
+### 37. Combinar varios filtros opcionales en un solo endpoint
+
+Cuando el frontend puede mandar cero, uno o varios `@Query()` a la
+vez, y el filtro solo debe aplicarse si ese valor vino. _(Ejemplo
+real: buscar Products por nombre Y/O por categoría Y/O por si están
+activos, sin que ningún filtro sea obligatorio)_
+
+```typescript
+async findWithFilters(filters: { textValue?: string; relatedExampleId?: number; booleanValue?: boolean }) {
+    const where: any = {};
+
+    if (filters.textValue) {
+        where.field = Like(`%${filters.textValue}%`);
+    }
+    if (filters.relatedExampleId) {
+        where.relatedExample = { id: filters.relatedExampleId };
+    }
+    if (filters.booleanValue !== undefined) {
+        where.booleanField = filters.booleanValue;
+    }
+
+    return await this.exampleRepository.find({ where });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('filter')
+findWithFilters(
+    @Query('text') text?: string,
+    @Query('relatedExampleId') relatedExampleId?: number,
+    @Query('booleanValue') booleanValue?: string,
+) {
+    return this.exampleService.findWithFilters({
+        textValue: text,
+        relatedExampleId: relatedExampleId ? Number(relatedExampleId) : undefined,
+        booleanValue: booleanValue !== undefined ? booleanValue === 'true' : undefined,
+    });
+}
+```
+
+---
+
+### 38. Ordenar resultados dinámicamente (`orderBy` desde query params)
+
+En vez de un orden fijo en el código, el cliente elige por qué campo y
+en qué dirección ordenar. _(Ejemplo real: `?sortBy=name&order=DESC`)_
+
+```typescript
+async findAllSorted(sortBy: string, order: 'ASC' | 'DESC') {
+    return await this.exampleRepository.find({
+        order: { [sortBy]: order },
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('sorted')
+findAllSorted(
+    @Query('sortBy') sortBy: string = 'id',
+    @Query('order') order: 'ASC' | 'DESC' = 'ASC',
+) {
+    return this.exampleService.findAllSorted(sortBy, order);
+}
+```
+
+---
+
+### 39. Buscar con OR entre varios campos
+
+Un array de objetos `where` en TypeORM se traduce en un `OR` entre
+condiciones (a diferencia de un solo objeto, que es `AND`). _(Ejemplo
+real: que el texto buscado aparezca en el nombre O en la
+descripción)_
+
+```typescript
+async searchInMultipleFields(text: string) {
+    return await this.exampleRepository.find({
+        where: [
+            { textField: Like(`%${text}%`) },
+            { optionalField: Like(`%${text}%`) },
+        ],
+    });
+}
+```
+
+**Controller:**
+
+```typescript
+@Get('search-multi')
+searchInMultipleFields(@Query('text') text: string) {
+    return this.exampleService.searchInMultipleFields(text);
+}
+```
+
+---
+
+### 40. Quitar UN elemento de una relación `ManyToMany`
+
+El bloque 21 solo agrega un relacionado; este lo saca sin tocar el
+resto. _(Ejemplo real: quitarle un Permission puntual a un Role)_
+
+```typescript
+async removeRelatedExample(id: number, relatedExampleId: number) {
+    const example = await this.exampleRepository.findOne({
+        where: { id },
+        relations: { relatedExamples: true },
+    });
+    if (!example) {
+        throw new NotFoundException('Example not found');
+    }
+
+    example.relatedExamples = example.relatedExamples.filter(
+        (relatedExample) => relatedExample.id !== relatedExampleId,
+    );
+
+    return await this.exampleRepository.save(example);
+}
+```
+
+**Controller:**
+
+```typescript
+@Delete(':id/related-examples/:relatedExampleId')
+removeRelatedExample(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('relatedExampleId', ParseIntPipe) relatedExampleId: number,
+) {
+    return this.exampleService.removeRelatedExample(id, relatedExampleId);
+}
+```
+
+---
+
+### 41. Reemplazar TODOS los relacionados de una `ManyToMany` de una sola vez
+
+En vez de agregar/quitar uno por uno, reemplaza el array completo por
+uno nuevo. _(Ejemplo real: actualizar de una vez todos los Permissions
+de un Role, mandando la lista completa de ids)_
+
+```typescript
+async setRelatedExamples(id: number, relatedExampleIds: number[]) {
+    const example = await this.exampleRepository.findOne({
+        where: { id },
+        relations: { relatedExamples: true },
+    });
+    if (!example) {
+        throw new NotFoundException('Example not found');
+    }
+
+    const relatedExamples = await this.relatedExampleRepository.findBy({
+        id: In(relatedExampleIds),
+    });
+
+    example.relatedExamples = relatedExamples;
+    return await this.exampleRepository.save(example);
+}
+```
+
+**Controller:**
+
+```typescript
+@Patch(':id/related-examples')
+setRelatedExamples(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('relatedExampleIds') relatedExampleIds: number[],
+) {
+    return this.exampleService.setRelatedExamples(id, relatedExampleIds);
+}
+```
+
+---
+
+### 42. Activar/desactivar un campo booleano (`toggle`) sin tocar el resto
+
+Un PATCH puntual que invierte un solo valor, sin recibir body.
+_(Ejemplo real: activar/desactivar un User o un Product sin mandar
+todos sus campos)_
+
+```typescript
+async toggleStatus(id: number) {
+    const example = await this.exampleRepository.findOneBy({ id });
+    if (!example) {
+        throw new NotFoundException('Example not found');
+    }
+
+    example.booleanField = !example.booleanField;
+    return await this.exampleRepository.save(example);
+}
+```
+
+**Controller:**
+
+```typescript
+@Patch(':id/toggle-status')
+toggleStatus(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.toggleStatus(id);
+}
+```
+
+---
+
+### 43. `@HttpCode()` explícito en cada endpoint
+
+Nest ya usa `201` para `@Post()` y `200` para el resto por defecto,
+pero podés forzar el código igual — es buena práctica dejarlo
+explícito y es obligatorio cuando querés un código distinto al
+default (como `204 NO_CONTENT` en un `delete`, que no debe devolver
+body).
+
+```typescript
+import { HttpCode, HttpStatus } from '@nestjs/common';
+
+@Post()
+@HttpCode(HttpStatus.CREATED)
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+
+@Get()
+@HttpCode(HttpStatus.OK)
+findAll() {
+    return this.exampleService.findAll();
+}
+
+@Get(':id')
+@HttpCode(HttpStatus.OK)
+findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.findOne(id);
+}
+
+@Patch(':id')
+@HttpCode(HttpStatus.OK)
+update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
+    return this.exampleService.update(id, updateExampleDto);
+}
+
+// OJO: con NO_CONTENT no se debe devolver body, por eso el método
+// solo hace await sin "return" del resultado.
+@Delete(':id')
+@HttpCode(HttpStatus.NO_CONTENT)
+async remove(@Param('id', ParseIntPipe) id: number) {
+    await this.exampleService.remove(id);
+}
+```
+
+---
+
+### 44. Variante defensiva del controller con `try/catch` (alternativa al bloque 26/33)
+
+**Usar SOLO esta variante O la del bloque 26/33 en todo el proyecto,
+no mezcladas.** Esta versión hace que el controller también atrape
+errores inesperados (ej. fallos de conexión a la BD) y los envuelva en
+un `500`, mientras deja pasar sin tocar las excepciones de negocio que
+ya vienen con su código HTTP correcto desde el service.
+
+```typescript
+import { InternalServerErrorException } from '@nestjs/common';
+
+@Patch(':id')
+@HttpCode(HttpStatus.OK)
+async update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
+    try {
+        return await this.exampleService.update(id, updateExampleDto);
+    } catch (error) {
+        // Si la excepción ya es de negocio (NotFoundException, ConflictException, etc.),
+        // se relanza tal cual para que Nest arme su respuesta HTTP normal.
+        if (error instanceof Error && 'status' in error) {
+            throw error;
+        }
+        throw new InternalServerErrorException('Failed to update the Example', {
+            cause: error,
+            description: 'Unexpected error while persisting changes to the database.',
+        });
+    }
+}
+```
+
+---
+
+### 45. Pipe personalizado (`PositiveIntPipe`) en vez de `ParseIntPipe`
+
+Cuando además de validar que el `id` sea un número, tenés que validar
+que sea positivo (rechazar `0` o negativos) antes de que llegue al
+service.
+
+```typescript
+import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+
+@Injectable()
+export class PositiveIntPipe implements PipeTransform<string, number> {
+    transform(value: string): number {
+        const parsedValue = parseInt(value, 10);
+        if (isNaN(parsedValue) || parsedValue <= 0) {
+            throw new BadRequestException('The id must be a positive integer');
+        }
+        return parsedValue;
+    }
+}
+```
+
+**Controller (reemplaza `ParseIntPipe` por este en cualquier bloque):**
+
+```typescript
+@Get(':id')
+findOne(@Param('id', PositiveIntPipe) id: number) {
+    return this.exampleService.findOne(id);
+}
+```
+
+---
+
+### 46. Hashear la contraseña antes de guardar (típico en Auth/User)
+
+Nunca se guarda una contraseña en texto plano. _(Ejemplo real: crear
+un User con su password hasheada con `bcrypt`)_
+
+```typescript
+import * as bcrypt from 'bcrypt';
+
+async create(createExampleDto: CreateExampleDto): Promise<Example> {
+    const hashedPassword = await bcrypt.hash(createExampleDto.password, 10);
+
+    const newExample = this.exampleRepository.create({
+        ...createExampleDto,
+        password: hashedPassword,
+    });
+    return await this.exampleRepository.save(newExample);
+}
+```
+
+**Controller:**
+
+```typescript
+@Post()
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+```
+
+---
+
+### 47. Guard + decorador `@Roles()` para proteger rutas según el rol del usuario
+
+Restringe el acceso a una ruta solo a usuarios con determinado rol.
+Requiere que un guard de autenticación previo ya haya puesto
+`request.user` (ej. con JWT). _(Ejemplo real: solo un `admin` puede
+borrar un Example)_
+
+```typescript
+import { Injectable, CanActivate, ExecutionContext, SetMetadata } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
+
+export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
+
+@Injectable()
+export class RolesGuard implements CanActivate {
+    constructor(private reflector: Reflector) {}
+
+    canActivate(context: ExecutionContext): boolean {
+        const requiredRoles = this.reflector.get<string[]>('roles', context.getHandler());
+        if (!requiredRoles) {
+            return true;
+        }
+        const request = context.switchToHttp().getRequest();
+        const user = request.user; // seteado previamente por un guard/estrategia de auth
+        return requiredRoles.includes(user?.role);
+    }
+}
+```
+
+**Controller:**
+
+```typescript
+import { UseGuards } from '@nestjs/common';
+
+@UseGuards(RolesGuard)
+@Roles('admin')
+@Delete(':id')
+remove(@Param('id', ParseIntPipe) id: number) {
+    return this.exampleService.remove(id);
+}
+```
+
+---
+
 ## Tabla resumen — ¿qué bloque uso según lo que me piden?
 
-| El problema pide...                                       | Usa el bloque # |
-| --------------------------------------------------------- | --------------- |
-| Crear entidad simple (sin relación)                       | 1               |
-| Crear entidad que depende de OTRA (1 relación)            | 2               |
-| Crear tabla intermedia (2 relaciones)                     | 3               |
-| Evitar asociación duplicada                               | 4               |
-| Listar todo con su relación                               | 5               |
-| Listar con relación anidada (2 niveles)                   | 6               |
-| Buscar uno por id                                         | 7               |
-| Filtrar por campo de la relación                          | 8               |
-| Búsqueda parcial de texto                                 | 9               |
-| Actualizar campos simples                                 | 10              |
-| Actualizar cambiando 1 relación                           | 11              |
-| Actualizar cambiando 2 relaciones                         | 12              |
-| Eliminar simple                                           | 13              |
-| Eliminar con validación de dependencias                   | 14              |
-| Contar todos                                              | 15              |
-| Contar filtrando por relación                             | 16              |
-| Evitar valores duplicados en un campo único al crear      | 17              |
-| Traer los últimos N                                       | 18              |
-| Paginación                                                | 19              |
-| Relación uno a uno (`@OneToOne`)                          | 20              |
-| Relación muchos a muchos directa (`@ManyToMany`)          | 21              |
-| Filtrar por mayor/menor que, o rango de fechas            | 22              |
-| Filtrar por una lista de ids                              | 23              |
-| Consulta compleja / agregaciones (QueryBuilder)           | 24              |
-| Varias operaciones que deben ocurrir juntas (transacción) | 25              |
-| Que los errores devuelvan el código HTTP correcto         | 26              |
-| Validar el formato de los datos que llegan (DTO)          | 27              |
-| Buscar texto ignorando mayúsculas/minúsculas (`ILike`)    | 28              |
-| Filtrar por mayor o igual que (`MoreThanOrEqual`)         | 29              |
-| Filtrar por menor o igual que (`LessThanOrEqual`)         | 30              |
-| Buscar valores NULL (`IsNull`)                            | 31              |
-| Negar una condición (`Not`)                               | 32              |
-| Manejar excepciones HTTP estándar                         | 33              |
+| El problema pide...                                           | Usa el bloque # |
+| ------------------------------------------------------------- | --------------- |
+| Crear entidad simple (sin relación)                           | 1               |
+| Crear entidad que depende de OTRA (1 relación)                | 2               |
+| Crear tabla intermedia (2 relaciones)                         | 3               |
+| Evitar asociación duplicada                                   | 4               |
+| Listar todo con su relación                                   | 5               |
+| Listar con relación anidada (2 niveles)                       | 6               |
+| Buscar uno por id                                             | 7               |
+| Filtrar por campo de la relación                              | 8               |
+| Búsqueda parcial de texto                                     | 9               |
+| Actualizar campos simples                                     | 10              |
+| Actualizar cambiando 1 relación                               | 11              |
+| Actualizar cambiando 2 relaciones                             | 12              |
+| Eliminar simple                                               | 13              |
+| Eliminar con validación de dependencias                       | 14              |
+| Contar todos                                                  | 15              |
+| Contar filtrando por relación                                 | 16              |
+| Evitar valores duplicados en un campo único al crear          | 17              |
+| Traer los últimos N                                           | 18              |
+| Paginación                                                    | 19              |
+| Relación uno a uno (`@OneToOne`)                              | 20              |
+| Relación muchos a muchos directa (`@ManyToMany`)              | 21              |
+| Filtrar por mayor/menor que, o rango de fechas                | 22              |
+| Filtrar por una lista de ids                                  | 23              |
+| Consulta compleja / agregaciones (QueryBuilder)               | 24              |
+| Varias operaciones que deben ocurrir juntas (transacción)     | 25              |
+| Que los errores devuelvan el código HTTP correcto             | 26              |
+| Validar el formato de los datos que llegan (DTO)              | 27              |
+| Buscar texto ignorando mayúsculas/minúsculas (`ILike`)        | 28              |
+| Filtrar por mayor o igual que (`MoreThanOrEqual`)             | 29              |
+| Filtrar por menor o igual que (`LessThanOrEqual`)             | 30              |
+| Buscar valores NULL (`IsNull`)                                | 31              |
+| Negar una condición (`Not`)                                   | 32              |
+| Manejar excepciones HTTP estándar                             | 33              |
+| Buscar texto que EMPIECE con algo (`StartsWith`)              | 34              |
+| Buscar por id de una relación `ManyToOne`                     | 35              |
+| Buscar por id de una relación `ManyToMany`                    | 36              |
+| Combinar varios filtros opcionales en un solo endpoint        | 37              |
+| Ordenar dinámicamente por query param                         | 38              |
+| Buscar con OR entre varios campos                             | 39              |
+| Quitar un elemento de una `ManyToMany`                        | 40              |
+| Reemplazar todos los relacionados de una `ManyToMany`         | 41              |
+| Activar/desactivar un campo booleano (toggle)                 | 42              |
+| Forzar el código HTTP de respuesta (`@HttpCode`)              | 43              |
+| Controller defensivo con try/catch (alternativa)              | 44              |
+| Pipe personalizado para validar id positivo                   | 45              |
+| Hashear contraseña antes de guardar (`bcrypt`)                | 46              |
+| Proteger una ruta según el rol del usuario (Guard + `@Roles`) | 47              |
