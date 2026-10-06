@@ -123,19 +123,19 @@ del `insert.sql`).
 
 | El enunciado dice...                                                                  | Receta                                                                                                             |
 | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| "crear X"; "la fecha debe ser futura"; "inicializar availableSpots con capacity"      | [R1](#r1-crear-el-recurso)                                                                                         |
-| "el usuario autenticado se inscribe / registra / comenta" (sin cupos); "solo una vez" | [R2](#r2-crear-algo-del-usuario-del-token-sin-cupos)                                                               |
-| "obtener X" con paginación, filtros o buscador                                        | [R3](#r3-listar-con-paginación-filtros-y-buscador)                                                                 |
-| "obtener mis X a través del token"                                                    | [R4](#r4-mis-bookings-del-token)                                                                                   |
+| "crear X"; "la fecha debe ser futura"; "inicializar availableSpots con capacity"      | [R1](#r1-crear-evento-fecha-futura--availablespots--capacity)                                                      |
+| "el usuario autenticado se inscribe / registra / comenta" (sin cupos); "solo una vez" | [R2](#r2-crear-inscripción-del-usuario-del-token-sin-cupos-y-sin-duplicar)                                         |
+| "obtener X" con paginación, filtros o buscador                                        | [R3](#r3-listar-eventos-paginación-filtros-y-buscador)                                                             |
+| "obtener mis X a través del token"                                                    | [R4](#r4-mis-reservas-get-user-solo-las-del-usuario-del-token)                                                     |
 | "obtener X por id" (cualquiera) / "solo ADMIN o propietario"                          | [Molde: `findOne`](#5-service-del-booking)                                                                         |
-| "actualizar X"; "la fecha debe seguir siendo futura"; "capacidad ≥ reservados"        | [R5](#r5-actualizar-el-recurso)                                                                                    |
-| "crear reserva": existe, activo, fechas, cupos, límite por usuario, descontar         | [V1 → bloque 85](#v1-crear-un-booking-que-consume-cupos)                                                           |
-| "cancelar / devolver": pertenece al usuario, no cancelada, no ocurrió, liberar cupos  | [V2 → bloque 86](#v2-cancelar--devolver-un-booking)                                                                |
-| "actualizar reserva" (cambia la cantidad)                                             | [V3 → bloque 87](#v3-actualizar-la-cantidad-de-un-booking)                                                         |
-| "filtrar entre dos fechas"                                                            | [V4 → bloque 88](#v4-filtrar-entre-dos-fechas)                                                                     |
-| "eliminar X"; "validar existencia"; "responder con el mensaje: ..."                   | [V5 → bloque 89](#v5-eliminar-con-mensaje)                                                                         |
-| "desactivar / cancelar X solo si no tiene reservas activas"                           | [V6 → bloque 83](#v6-desactivar-el-recurso)                                                                        |
-| "cambiar el estado de X a ..." (confirmar, completar, instalar)                       | [bloque 70](metodos_nestjs.md#70-cambiar-un-estado-enum-con-transición-validada-planned--installed)                |
+| "actualizar X"; "la fecha debe seguir siendo futura"; "capacidad ≥ reservados"        | [R5](#r5-actualizar-evento-fecha-futura-si-se-modifica--capacidad-no-menor-a-los-reservados)                       |
+| "crear reserva": existe, activo, fechas, cupos, límite por usuario, descontar         | [V1 → bloque 85](#v1-crear-reserva-existe-activo-no-ocurrió-cupos-límite-y-descontar)                              |
+| "cancelar / devolver": pertenece al usuario, no cancelada, no ocurrió, liberar cupos  | [V2 → bloque 86](#v2-cancelar-o-devolver-reserva-dueño-no-cancelada-no-ocurrió-liberar-cupos)                      |
+| "actualizar reserva" (cambia la cantidad)                                             | [V3 → bloque 87](#v3-actualizar-reserva-cambiar-la-cantidad)                                                       |
+| "filtrar entre dos fechas"                                                            | [V4 → bloque 88](#v4-filtrar-reservas-entre-dos-fechas)                                                            |
+| "eliminar X"; "validar existencia"; "responder con el mensaje: ..."                   | [V5 → bloque 89](#v5-eliminar-evento-o-reserva-validar-existencia--mensaje)                                        |
+| "desactivar / cancelar X solo si no tiene reservas activas"                           | [V6 → bloque 83](#v6-desactivar-evento-solo-sin-reservas-activas)                                                  |
+| "cambiar el estado de X a ..." (confirmar, completar, instalar)                       | [bloque 70](metodos_nestjs.md#70-cambiar-el-estado-confirmar-instalar-validando-el-estado-actual-enum)             |
 | "solo uno puede ser principal / predeterminado a la vez"                              | [bloque 69](metodos_nestjs.md#69-solo-uno-marcado-a-la-vez-principal--predeterminado--activo)                      |
 | "dar y quitar like" / "guardar y quitar de guardados"                                 | [bloque 95](metodos_nestjs.md#95-dar--quitar-con-el-mismo-endpoint-toggle-de-relación-like-guardar)                |
 | "seguir / dejar de seguir a un usuario"                                               | [bloque 94](metodos_nestjs.md#94-dos-relaciones-a-la-misma-entidad-seguir-usuarios-no-a-sí-mismo-y-sin-duplicados) |
@@ -578,7 +578,7 @@ export class BookingController {
 
 ## 🍳 Recetas completas
 
-### R1. Crear el recurso
+### R1. Crear evento (fecha futura + `availableSpots` = `capacity`)
 
 **Frases que la activan:** _"crear X"_, _"la fecha debe ser futura"_,
 _"inicializar availableSpots con capacity; la solicitud no debe incluir
@@ -625,7 +625,7 @@ async create(createResourceDto: CreateResourceDto) {
 
 ---
 
-### R2. Crear algo del usuario del token (sin cupos)
+### R2. Crear inscripción del usuario del token (sin cupos y sin duplicar)
 
 **Frases que la activan:** _"el usuario autenticado puede inscribirse /
 registrarse / calificar"_, _"un usuario no puede inscribirse dos veces"_,
@@ -666,13 +666,13 @@ async createWithoutSpots(resourceId: number, currentUser: User) {
 
 **Variantes:**
 
-- _"si tiene cupos"_ → no uses esta: usá [V1](#v1-crear-un-booking-que-consume-cupos).
+- _"si tiene cupos"_ → no uses esta: usá [V1](#v1-crear-reserva-existe-activo-no-ocurrió-cupos-límite-y-descontar).
 - _"no puede inscribirse nunca dos veces"_ (ni aunque haya cancelado) → sacá `status` del `where`.
 - _"solo si la fecha no pasó"_ → agregá `if (new Date(resource.date) <= new Date())` → 400, después del `if` de activo.
 
 ---
 
-### R3. Listar con paginación, filtros y buscador
+### R3. Listar eventos (paginación, filtros y buscador)
 
 **Frases que la activan:** _"obtener X"_, _"paginado"_, _"filtrar por
 activo / categoría"_, _"buscar por nombre o descripción"_.
@@ -715,7 +715,7 @@ El controller ya está en el [molde](#6-controllers-completos-con-el-orden-de-ru
 
 ---
 
-### R4. Mis bookings (del token)
+### R4. Mis reservas (`GET /user`: solo las del usuario del token)
 
 **Frases que la activan:** _"obtener mis reservas a través del token
 JWT"_, _"retorna únicamente las del usuario autenticado"_.
@@ -739,11 +739,11 @@ async findMine(currentUser: User, status?: BookingStatus) {
 **Variantes:**
 
 - _"solo las activas"_ → fijá `status: BookingStatus.Active` en el `where` y sacá el parámetro.
-- _"mis reservas entre dos fechas"_ → combinalo con [V4](#v4-filtrar-entre-dos-fechas) agregando `user: { id: currentUser.id }` al `where`.
+- _"mis reservas entre dos fechas"_ → combinalo con [V4](#v4-filtrar-reservas-entre-dos-fechas) agregando `user: { id: currentUser.id }` al `where`.
 
 ---
 
-### R5. Actualizar el recurso
+### R5. Actualizar evento (fecha futura si se modifica + capacidad no menor a los reservados)
 
 **Frases que la activan:** _"actualizar la información de X"_, _"si se
 modifica la fecha, debe seguir siendo futura"_, _"si se modifica la
@@ -798,9 +798,9 @@ Estas recetas están completas en el otro archivo (no se copian acá para
 no repetir). Abajo está **cómo adaptarlas** cuando tu enunciado pide algo
 un poco distinto.
 
-### V1. Crear un booking que consume cupos
+### V1. Crear reserva (existe, activo, no ocurrió, cupos, límite y descontar)
 
-📄 Código completo: [bloque 85](metodos_nestjs.md#85-receta-armada-crear-una-reserva-completa-orden-de-validaciones--transacción) (allá `Example`
+📄 Código completo: [bloque 85](metodos_nestjs.md#85-crear-reserva-completa-evento-existe-activo-no-ocurrió-cupos-límite-y-descontar) (allá `Example`
 = `Booking`, `RelatedExample` = `Resource`, `numericField` = `quantity`,
 `booleanField` = `isActive`, `dateField` = `date`, `owner` = `user`).
 
@@ -810,23 +810,23 @@ un poco distinto.
 - _"no puede reservar dos veces el mismo recurso"_ → antes de guardar: `findOne` de un booking activo del usuario en ese recurso → 409.
 - _"solo se puede reservar hasta X horas antes"_ → `if (eventDate.getTime() - Date.now() < X * 60 * 60 * 1000)` → 400.
 
-### V2. Cancelar / devolver un booking
+### V2. Cancelar o devolver reserva (dueño, no cancelada, no ocurrió, liberar cupos)
 
-📄 Código completo: [bloque 86](metodos_nestjs.md#86-receta-armada-cancelar-una-reserva-completa-dueño--estado--fecha--liberar-cupos).
+📄 Código completo: [bloque 86](metodos_nestjs.md#86-cancelar-reserva-completa-dueño-no-cancelada-evento-no-ocurrido-liberar-cupos-y-cancelled).
 
 - _"el ADMIN también puede cancelar"_ → reemplazá el `findOne` + el `if` de dueño por `await this.findOwnedOrFail(id, currentUser, true, manager)` (del molde).
 - _"devolver"_ (préstamo) → estado `RETURNED` en vez de `CANCELLED`, y el mensaje que pida el enunciado (ej. _"Loan returned..."_).
 - _"no se puede cancelar con menos de 24 h de anticipación"_ → `if (new Date(booking.resource.date).getTime() - Date.now() < 24 * 60 * 60 * 1000)` → 400.
 - _"en vez de estado hay un booleano `isActive`"_ → `if (!booking.isActive)` → 409 y `booking.isActive = false`.
 
-### V3. Actualizar la cantidad de un booking
+### V3. Actualizar reserva (cambiar la cantidad)
 
-📄 Código completo: [bloque 87](metodos_nestjs.md#87-actualizar-la-cantidad-de-una-reserva-ajustar-cupos-por-la-diferencia).
+📄 Código completo: [bloque 87](metodos_nestjs.md#87-actualizar-reserva-cambiar-la-cantidad-ajustando-los-cupos-del-evento).
 
 - _"no se puede modificar si el evento ya ocurrió"_ → después del `if` de cancelada: `if (new Date(booking.resource.date) <= new Date())` → 400.
 - _"el ADMIN también puede editar"_ → `findOwnedOrFail(id, currentUser, true, manager)` en vez del `findOne` + `if` de dueño.
 
-### V4. Filtrar entre dos fechas
+### V4. Filtrar reservas entre dos fechas
 
 📄 Código completo: [bloque 88](metodos_nestjs.md#88-filtrar-entre-dos-fechas-recibidas-por-query-validadas-y-con-el-día-final-incluido).
 
@@ -834,18 +834,18 @@ un poco distinto.
 - _"por la fecha del evento"_ → `where: { resource: { date: Between(startDate, endDate) } }`.
 - _"solo las mías"_ → agregá `user: { id: currentUser.id }` al `where` y pasá `req.user` desde el controller.
 
-### V5. Eliminar con mensaje
+### V5. Eliminar evento o reserva (validar existencia + mensaje)
 
-📄 Código completo: [bloque 89](metodos_nestjs.md#89-eliminar-validando-existencia-y-respondiendo-un-mensaje-propio) (tiene las dos
+📄 Código completo: [bloque 89](metodos_nestjs.md#89-eliminar-evento-o-reserva-validar-que-exista-sin-500-por-fk-y-con-mensaje-propio) (tiene las dos
 versiones: recurso y booking).
 
 - _"al eliminar el recurso se eliminan sus reservas"_ → en vez del `if` que cuenta reservas (409), poné `onDelete: 'CASCADE'` en el `@ManyToOne` de `Booking.resource` ([bloque 78](metodos_nestjs.md#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)).
 - _"no se borra de verdad, se marca como eliminado"_ → `softDelete` ([bloque 65](metodos_nestjs.md#65-soft-delete-no-borrar-físicamente-solo-marcar)).
 - _"responder 204 sin body"_ → no devuelvas nada y agregá `@HttpCode(HttpStatus.NO_CONTENT)` en el controller.
 
-### V6. Desactivar el recurso
+### V6. Desactivar evento (solo sin reservas activas)
 
-📄 Código completo: [bloque 83](metodos_nestjs.md#83-desactivar-de-una-sola-vía-sin-toggle-validando-que-no-tenga-dependientes-activos).
+📄 Código completo: [bloque 83](metodos_nestjs.md#83-desactivar-evento-solo-si-no-tiene-reservas-activas-sin-toggle).
 
 - _"también se puede reactivar"_ → otro endpoint `PATCH /:id/activate` igual pero al revés (409 si ya estaba activo, sin contar reservas).
 - _"al desactivar se cancelan sus reservas activas"_ → en vez del 409, dentro de una transacción cancelá las activas y liberá sus cupos:

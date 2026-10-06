@@ -269,7 +269,7 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ---
 
-### 2. Crear un registro que depende de UNA entidad existente
+### 2. Crear un registro que pertenece a otra entidad (buscar el relacionado por id + 404)
 
 > 🎯 **Úsalo en el examen cuando...:** La entidad nueva debe "engancharse" a otra que ya existe en la BD (te llega su id en el DTO). Frase típica: _"crear un Order que pertenece a un Customer ya registrado"_.
 > 🧩 **Cómo se combina:** Esqueleto completo. Reglas de negocio nuevas van después del `if (!relatedExample)`, antes de crear.
@@ -306,7 +306,7 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ---
 
-### 3. Crear una tabla intermedia (dos relaciones, sin columnas propias)
+### 3. Crear un registro que une dos entidades (tabla intermedia: inscripción, rol-permiso)
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden una tabla que solo une dos entidades existentes, sin columnas propias más allá de los ids. Frase típica: _"un Enrollment que une un Student con un Course"_.
 > 🧩 **Cómo se combina:** Esqueleto completo. Reglas nuevas van después de los dos `if` de "no encontrado", antes de crear.
@@ -350,7 +350,7 @@ create(@Body() createExampleDto: CreateExampleDto) {
 
 ---
 
-### 4. Crear un registro con relación + validar que NO exista duplicado
+### 4. Crear sin repetir la misma combinación (ej. no inscribirse dos veces al mismo curso)
 
 > 🎯 **Úsalo en el examen cuando...:** Además de la relación, deben evitar que se repita la misma combinación dos veces. Frase típica: _"un mismo Student no puede inscribirse dos veces al mismo Course"_.
 > 🧩 **Cómo se combina:** Esqueleto completo — la validación de duplicado YA es un ejemplo de "pieza insertada". Otras reglas van en el mismo lugar, antes de crear.
@@ -581,7 +581,7 @@ update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateEx
 
 ---
 
-### 11. Actualizar reasignando UNA relación
+### 11. Actualizar cambiando a qué registro pertenece (reasignar UNA relación)
 
 > 🎯 **Úsalo en el examen cuando...:** El update debe permitir cambiar A QUÉ entidad relacionada apunta el registro. Frase típica: _"reasignar una Order a otro Customer"_.
 > 🧩 **Cómo se combina:** Esqueleto de update que YA busca primero — las reglas de negocio van entre el `if (!example)` y el `save`.
@@ -712,7 +712,7 @@ remove(@Param('id', ParseIntPipe) id: number) {
 
 ---
 
-### 14. Eliminar validando que no tenga dependencias
+### 14. Eliminar solo si no tiene registros asociados (ej. evento con reservas → 409)
 
 > 🎯 **Úsalo en el examen cuando...:** No se debe poder borrar un registro si OTROS todavía dependen de él. Frase típica: _"no permitir borrar una Category si tiene Products asociados"_.
 > 🧩 **Cómo se combina:** Esqueleto completo — ya incluye una regla (dependientes) como ejemplo de dónde insertar más.
@@ -1146,7 +1146,7 @@ countExamplesByRelatedExample() {
 
 ---
 
-### 25. Transacción (varias operaciones que deben tener éxito juntas)
+### 25. Transacción: varias operaciones que deben ir juntas (ej. descontar cupos + crear la reserva)
 
 > 🎯 **Úsalo en el examen cuando...:** Dos o más operaciones deben tener éxito JUNTAS o fallar juntas. Frase típica: _"crear una reserva y descontar el cupo disponible del evento en la misma operación"_.
 > 🧩 **Cómo se combina:** Esqueleto especial cuando dos operaciones deben ir juntas. Las reglas de negocio (`if`) van DENTRO del callback de la transacción, antes de guardar cualquiera de las dos.
@@ -1192,7 +1192,7 @@ createWithTransaction(@Body() createExampleDto: CreateExampleDto) {
 
 ---
 
-### 26. Usar excepciones propias de NestJS (en vez de `throw new Error`)
+### 26. Lanzar errores con excepciones de Nest (404, 409, 400) en vez de `throw new Error`
 
 > 🎯 **Úsalo en el examen cuando...:** Cualquier vez que un recurso puede no existir o entrar en conflicto, y no querés que la respuesta sea un 500 genérico. Es la base de casi TODOS los servicios.
 > 🧩 **Cómo se combina:** Esto no es un esqueleto — es la FORMA que deben tener todos los `if` de validación en cualquier bloque (siempre `throw new XException(...)`, nunca `throw new Error(...)`).
@@ -1912,7 +1912,7 @@ async remove(@Param('id', ParseIntPipe) id: number) {
 
 ---
 
-### 44. Variante defensiva del controller con `try/catch` (combinable con el bloque 43)
+### 44. Controller con `try/catch` para nunca responder un 500 sin mensaje
 
 > 🎯 **Úsalo en el examen cuando...:** El enunciado dice que NUNCA debe devolverse un `Internal Server Error 500` sin mensaje — hay que atrapar errores inesperados además de las excepciones de negocio.
 > 🧩 **Cómo se combina:** Envuelve CUALQUIER llamada del controller al service — no cambia la lógica del service, solo atrapa errores no controlados.
@@ -2171,7 +2171,7 @@ async findByOwner(ownerId: number) {
 
 ---
 
-### 50. Validar que una fecha sea futura
+### 50. Crear con fecha futura e inicializar `availableSpots` con `capacity`
 
 > 🎯 **Úsalo en el examen cuando...:** El enunciado dice que una fecha (de un evento, una cita, una reserva) debe ser FUTURA al crear o actualizar.
 > 🧩 **Cómo se combina:** Es un `if` que va dentro del `create`, justo antes de `this.exampleRepository.create(...)`: si la fecha no es futura, 400.
@@ -2219,7 +2219,7 @@ export class CreateExampleDto {
 
 ---
 
-### 51. Validar que un evento ocurra dentro de una ventana de N días
+### 51. Validar que el evento no haya ocurrido y sea dentro de los próximos N días
 
 > 🎯 **Úsalo en el examen cuando...:** El enunciado agrega una ventana de tiempo límite. Frase típica: _"el evento debe realizarse dentro de los próximos N días"_.
 > 🧩 **Cómo se combina:** Son dos `if` que van dentro del `create`, después de buscar la entidad relacionada (necesitás su fecha) y antes de guardar.
@@ -2253,7 +2253,7 @@ async create(createExampleDto: CreateExampleDto) {
 
 ---
 
-### 52. Descontar / reponer cupos disponibles con validación de capacidad
+### 52. Descontar cupos al reservar y devolverlos al cancelar (no exceder `availableSpots`)
 
 > 🎯 **Úsalo en el examen cuando...:** Hay un recurso con "cupos"/"stock" que se descuenta al reservar y se repone al cancelar, con validación de que no falten cupos.
 > 🧩 **Cómo se combina:** Son dos piezas: en el `create`, después de buscar el relacionado, validás que alcancen los cupos y los descontás antes de guardar; en el `cancel`, los devolvés antes de marcarla como cancelada.
@@ -2311,7 +2311,7 @@ async cancel(id: number) {
 
 ---
 
-### 53. Limitar cuántos recursos activos puede tener un mismo usuario sobre otro recurso
+### 53. Límite por usuario CONTANDO reservas activas (si cada reserva es de 1 cupo)
 
 > 🎯 **Úsalo en el examen cuando...:** El enunciado pone un TOPE por usuario sobre el mismo recurso. Frase típica: _"máximo 5 cupos activos por usuario en el mismo evento"_.
 > 🧩 **Cómo se combina:** Es una PIEZA que se inserta en el esqueleto de `create`, antes de guardar (después de la de cupos, si también aplica).
@@ -2370,7 +2370,7 @@ export class ExampleNotFoundException extends NotFoundException {
 
 ---
 
-### 55. Autorización mixta: ADMIN o dueño del recurso
+### 55. Ver un registro solo si es ADMIN o el dueño (403 si no)
 
 > 🎯 **Úsalo en el examen cuando...:** El enunciado dice que un recurso solo puede verlo/editarlo el ADMIN o su propio dueño, no cualquier usuario autenticado.
 > 🧩 **Cómo se combina:** Es un `findOne` normal (buscar + 404) con un `if` extra en el medio: si no es admin ni dueño, 403.
@@ -2968,7 +2968,7 @@ setPrincipal(@Param('id', ParseIntPipe) id: number) {
 
 ---
 
-### 70. Cambiar un estado `enum` con transición validada (`planned` → `installed`)
+### 70. Cambiar el estado (confirmar, instalar…) validando el estado actual (`enum`)
 
 > 🎯 **Úsalo en el examen cuando...:** El registro tiene un campo de estado con valores fijos (enum) y te piden un endpoint para avanzarlo, sin permitir repetir el paso. Frase típica: _"marcar la modificación como instalada"_, _"confirmar un pedido pendiente"_.
 > 🧩 **Cómo se combina:** Es un `PATCH /:id/<acción>` sin body: buscás el registro, validás el estado actual (409 si ya está en el estado final) y le asignás el siguiente. Si al cambiar hay que completar otro campo (ej. la fecha), va justo antes del `save`.
@@ -3027,7 +3027,7 @@ install(@Param('id', ParseIntPipe) id: number) {
 
 ---
 
-### 71. Listar por relación + estado: varios endpoints, UN solo método
+### 71. Listar los de un registro filtrando por estado (ej. reservas activas / canceladas)
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden varias "vistas" del mismo listado que solo cambian en un filtro fijo. Frase típica: _"ver las modificaciones instaladas (CURRENT BUILD) y, por separado, las planeadas (PLANNED)"_.
 > 🧩 **Cómo se combina:** Un solo método en el service que filtra por el id de la relación Y por un estado que recibe como parámetro. Cada endpoint del controller lo llama pasando un estado fijo distinto.
@@ -3072,7 +3072,7 @@ findPlanned(@Param('relatedExampleId', ParseIntPipe) relatedExampleId: number) {
 
 ---
 
-### 72. Regla de negocio que depende de DOS campos (en create Y en update)
+### 72. Regla que depende de DOS campos (ej. tracción solo para carros) en create y update
 
 > 🎯 **Úsalo en el examen cuando...:** Un campo solo es válido según el valor de otro. Frase típica: _"la tracción solo aplica para carros, no para motos"_ o _"si el pago es con tarjeta, las cuotas son obligatorias"_.
 > 🧩 **Cómo se combina:** Pieza que va antes de crear/guardar (mismo lugar que cualquier regla). En el UPDATE hay que combinar lo que llega con lo que ya estaba guardado.
@@ -3521,7 +3521,7 @@ findOne(@Param('id', ParseIntPipe) id: number) {
 > - En **84–91**: `Example` = **Reservation** y `RelatedExample` = **Event** (salvo donde el código diga otra cosa, como la primera parte del 89).
 > - Campos: `capacity` / `availableSpots` = cupos del evento, `numericField` = cantidad de cupos de UNA reserva, `dateField` = fecha del evento, `booleanField` = `isActive` del evento, `status` = estado de la reserva (`ExampleStatus.Active` / `ExampleStatus.Cancelled`), `owner` = usuario dueño de la reserva.
 
-### 82. Actualizar recalculando cupos (la capacidad no puede quedar por debajo de lo reservado)
+### 82. Actualizar evento: fecha futura si se modifica + capacidad no menor a los cupos reservados
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden editar un recurso con capacidad/stock y dicen _"si se modifica la capacidad, no puede ser menor al número de cupos ya reservados"_ y/o _"si se modifica la fecha, debe seguir siendo futura"_.
 > 🧩 **Cómo se combina:** Es un update que primero busca el registro. Entre ese buscar y el `save` van dos `if`: fecha futura (solo si la fecha vino en el DTO) y capacidad ≥ cupos reservados; si cambia la capacidad, recalculás los disponibles.
@@ -3576,7 +3576,7 @@ update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateEx
 
 ---
 
-### 83. Desactivar de una sola vía (sin toggle), validando que no tenga dependientes activos
+### 83. Desactivar evento solo si no tiene reservas activas (sin toggle)
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden un endpoint para desactivar/cancelar un recurso con una condición. Frase típica: _"desactivar un evento solo si no tiene reservas activas"_.
 > 🧩 **Cómo se combina:** Es un `PATCH /:id/deactivate` sin body: buscás el registro, 409 si ya estaba inactivo, contás los dependientes ACTIVOS (409 si hay alguno) y recién ahí ponés `false`.
@@ -3629,7 +3629,7 @@ deactivate(@Param('id', ParseIntPipe) id: number) {
 
 ---
 
-### 84. Límite por usuario SUMANDO cantidades (corrige el conteo del bloque 53)
+### 84. Límite por usuario SUMANDO cupos activos (ej. máximo 5 cupos por evento)
 
 > 🎯 **Úsalo en el examen cuando...:** El tope es de CUPOS (cantidades) y no de registros. Frase típica: _"límite por usuario: máximo 5 cupos activos por evento"_ cuando cada reserva puede tener varios cupos.
 > 🧩 **Cómo se combina:** Es un `if` que va en el `create` (y en el update si cambia la cantidad), después de validar los cupos disponibles y antes de guardar: sumás los cupos activos del usuario y comparás con el máximo.
@@ -3679,7 +3679,7 @@ if (activeSpots + createExampleDto.numericField > 5) {
 
 ---
 
-### 85. Receta armada: crear una reserva completa (orden de validaciones + transacción)
+### 85. Crear reserva completa: evento existe, activo, no ocurrió, cupos, límite y descontar
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden crear un recurso que consume cupos de otro con varias reglas a la vez. Frase típica: _"el evento debe existir, estar activo, no haber ocurrido, ser dentro de los próximos 5 días, no exceder los cupos, máximo 5 cupos por usuario, y al crear se descuentan los cupos"_.
 > 🧩 **Cómo se combina:** Ya viene armado de principio a fin: dentro de una transacción buscás el evento, validás estado, fechas, cupos y límite por usuario, y recién al final descontás cupos y guardás la reserva con el usuario del token. Adaptá los nombres y quitá las reglas que tu enunciado no pida.
@@ -3785,7 +3785,7 @@ create(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedRequ
 
 ---
 
-### 86. Receta armada: cancelar una reserva completa (dueño + estado + fecha + liberar cupos)
+### 86. Cancelar reserva completa: dueño, no cancelada, evento no ocurrido, liberar cupos y `CANCELLED`
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden cancelar con varias condiciones. Frase típica: _"la reserva debe existir, pertenecer al usuario autenticado, no estar cancelada, el evento no debe haber ocurrido; al cancelar se liberan los cupos y el estado pasa a CANCELLED"_.
 > 🧩 **Cómo se combina:** Ya viene armado: dentro de una transacción buscás la reserva con su evento, validás que sea del usuario del token (403), que no esté cancelada (409) y que el evento no haya pasado (400); después devolvés los cupos, cambiás el estado y respondés el mensaje.
@@ -3849,7 +3849,7 @@ cancel(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) 
 
 ---
 
-### 87. Actualizar la cantidad de una reserva (ajustar cupos por la diferencia)
+### 87. Actualizar reserva: cambiar la cantidad ajustando los cupos del evento
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden un `PATCH` de un recurso que consume cupos/stock y la cantidad puede cambiar. Frase típica: _"actualizar reserva"_ cuando la reserva tiene cantidad de cupos.
 > 🧩 **Cómo se combina:** Es un update dentro de una transacción: buscás la reserva, validás dueño y estado, calculás la DIFERENCIA entre la cantidad nueva y la vieja, validás cupos y límite con esa diferencia, y ajustás los cupos del evento antes de guardar.
@@ -3993,7 +3993,7 @@ findBetweenDates(@Query('start') start: string, @Query('end') end: string) {
 
 ---
 
-### 89. Eliminar validando existencia y respondiendo un mensaje propio
+### 89. Eliminar evento o reserva: validar que exista, sin 500 por FK y con mensaje propio
 
 > 🎯 **Úsalo en el examen cuando...:** Te piden eliminar validando que exista y respondiendo un mensaje puntual. Frase típica: _"se debe validar la existencia del evento y responder con el mensaje: Este evento ha sido eliminado"_.
 > 🧩 **Cómo se combina:** Es un delete que primero busca el registro (404 si no existe), después decide qué pasa con lo que depende de él (impedir con 409 o borrar en cascada), borra y responde un mensaje. Si es una reserva activa, antes devuelve sus cupos.
@@ -4106,7 +4106,7 @@ return await this.exampleRepository.find({
 
 ---
 
-### 91. Método privado reutilizable: buscar + validar dueño (o admin) en un solo lugar
+### 91. Validar dueño o ADMIN en un método reutilizable (`findOwnedOrFail`)
 
 > 🎯 **Úsalo en el examen cuando...:** Varios endpoints repiten _"debe existir y pertenecer al usuario"_ (ver, editar, cancelar, borrar) y querés escribirlo una sola vez. Suma en "organización y calidad del código".
 > 🧩 **Cómo se combina:** Es un método `private` del service que hace "buscar + 404 + validar dueño/admin + 403". Los demás métodos lo llaman en su primera línea en vez de repetir esos `if`.
@@ -5041,27 +5041,27 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 
 ### 🧱 A. CRUD básico (crear, leer, actualizar, eliminar)
 
-| El problema pide...                                             | Bloque                                                                                    |
-| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Crear entidad simple (sin relación)                             | [#1](#1-crear-un-registro-simple-sin-relaciones)                                          |
-| Crear entidad que depende de OTRA (1 relación)                  | [#2](#2-crear-un-registro-que-depende-de-una-entidad-existente)                           |
-| Crear tabla intermedia (2 relaciones)                           | [#3](#3-crear-una-tabla-intermedia-dos-relaciones-sin-columnas-propias)                   |
-| Evitar asociación duplicada                                     | [#4](#4-crear-un-registro-con-relación--validar-que-no-exista-duplicado)                  |
-| Buscar uno por id                                               | [#7](#7-buscar-uno-por-id)                                                                |
-| Actualizar campos simples                                       | [#10](#10-actualizar-campos-simples-sin-tocar-relaciones)                                 |
-| Actualizar cambiando 1 relación                                 | [#11](#11-actualizar-reasignando-una-relación)                                            |
-| Actualizar cambiando 2 relaciones                               | [#12](#12-actualizar-reasignando-dos-relaciones-tabla-intermedia)                         |
-| Eliminar simple                                                 | [#13](#13-eliminar-por-id-simple-cualquier-entidad)                                       |
-| Eliminar con validación de dependencias                         | [#14](#14-eliminar-validando-que-no-tenga-dependencias)                                   |
-| Evitar valores duplicados en un campo único al crear            | [#17](#17-verificar-si-ya-existe-antes-de-crear-evitar-duplicados-por-campo-único)        |
-| Evitar valores duplicados en un campo único al ACTUALIZAR       | [#67](#67-validar-un-campo-único-también-al-actualizar-no-solo-al-crear)                  |
-| Crear el relacionado automáticamente si no existe               | [#68](#68-buscar-o-crear-el-relacionado-si-no-existe-se-crea-solo)                        |
-| Crear copiando datos de otra entidad                            | [#74](#74-crear-un-registro-copiando-datos-de-otra-entidad-con-estado-por-defecto)        |
-| Que el update NO deje cambiar ciertos campos                    | [#75](#75-updatedto-que-no-deja-cambiar-ciertos-campos-omittype)                          |
-| Eliminar en cascada (borrar hijos junto con el padre)           | [#78](#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)                            |
-| Eliminar validando existencia y respondiendo un mensaje         | [#89](#89-eliminar-validando-existencia-y-respondiendo-un-mensaje-propio)                 |
-| Si ya existe, sumar en vez de duplicar (carrito)                | [#96](#96-si-ya-existe-sumar-en-vez-de-duplicar-agregar-al-carrito)                       |
-| Al crear un registro, crear otro automáticamente (notificación) | [#99](#99-efecto-secundario-al-crear-un-registro-crear-otro-automáticamente-notificación) |
+| El problema pide...                                             | Bloque                                                                                      |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Crear entidad simple (sin relación)                             | [#1](#1-crear-un-registro-simple-sin-relaciones)                                            |
+| Crear entidad que depende de OTRA (1 relación)                  | [#2](#2-crear-un-registro-que-pertenece-a-otra-entidad-buscar-el-relacionado-por-id--404)   |
+| Crear tabla intermedia (2 relaciones)                           | [#3](#3-crear-un-registro-que-une-dos-entidades-tabla-intermedia-inscripción-rol-permiso)   |
+| Evitar asociación duplicada                                     | [#4](#4-crear-sin-repetir-la-misma-combinación-ej-no-inscribirse-dos-veces-al-mismo-curso)  |
+| Buscar uno por id                                               | [#7](#7-buscar-uno-por-id)                                                                  |
+| Actualizar campos simples                                       | [#10](#10-actualizar-campos-simples-sin-tocar-relaciones)                                   |
+| Actualizar cambiando 1 relación                                 | [#11](#11-actualizar-cambiando-a-qué-registro-pertenece-reasignar-una-relación)             |
+| Actualizar cambiando 2 relaciones                               | [#12](#12-actualizar-reasignando-dos-relaciones-tabla-intermedia)                           |
+| Eliminar simple                                                 | [#13](#13-eliminar-por-id-simple-cualquier-entidad)                                         |
+| Eliminar con validación de dependencias                         | [#14](#14-eliminar-solo-si-no-tiene-registros-asociados-ej-evento-con-reservas--409)        |
+| Evitar valores duplicados en un campo único al crear            | [#17](#17-verificar-si-ya-existe-antes-de-crear-evitar-duplicados-por-campo-único)          |
+| Evitar valores duplicados en un campo único al ACTUALIZAR       | [#67](#67-validar-un-campo-único-también-al-actualizar-no-solo-al-crear)                    |
+| Crear el relacionado automáticamente si no existe               | [#68](#68-buscar-o-crear-el-relacionado-si-no-existe-se-crea-solo)                          |
+| Crear copiando datos de otra entidad                            | [#74](#74-crear-un-registro-copiando-datos-de-otra-entidad-con-estado-por-defecto)          |
+| Que el update NO deje cambiar ciertos campos                    | [#75](#75-updatedto-que-no-deja-cambiar-ciertos-campos-omittype)                            |
+| Eliminar en cascada (borrar hijos junto con el padre)           | [#78](#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)                              |
+| Eliminar validando existencia y respondiendo un mensaje         | [#89](#89-eliminar-evento-o-reserva-validar-que-exista-sin-500-por-fk-y-con-mensaje-propio) |
+| Si ya existe, sumar en vez de duplicar (carrito)                | [#96](#96-si-ya-existe-sumar-en-vez-de-duplicar-agregar-al-carrito)                         |
+| Al crear un registro, crear otro automáticamente (notificación) | [#99](#99-efecto-secundario-al-crear-un-registro-crear-otro-automáticamente-notificación)   |
 
 ### 🔗 B. Relaciones especiales (`OneToOne` / `ManyToMany`)
 
@@ -5097,42 +5097,42 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | Combinar varios filtros opcionales en un solo endpoint     | [#37](#37-combinar-varios-filtros-opcionales-en-un-solo-endpoint)                             |
 | Ordenar dinámicamente por query param                      | [#38](#38-ordenar-resultados-dinámicamente-orderby-desde-query-params)                        |
 | Buscar con OR entre varios campos                          | [#39](#39-buscar-con-or-entre-varios-campos)                                                  |
-| Listar por relación + estado (varios endpoints, un método) | [#71](#71-listar-por-relación--estado-varios-endpoints-un-solo-método)                        |
+| Listar por relación + estado (varios endpoints, un método) | [#71](#71-listar-los-de-un-registro-filtrando-por-estado-ej-reservas-activas--canceladas)     |
 | Filtros opcionales + buscador OR en el mismo endpoint      | [#73](#73-filtros-opcionales-and--buscador-en-varios-campos-or-en-el-mismo-endpoint)          |
 | Ordenar la lista de la relación que traés                  | [#77](#77-ordenar-la-lista-de-la-relación-que-traés-order-anidado)                            |
 | Filtrar entre dos fechas del query, validadas              | [#88](#88-filtrar-entre-dos-fechas-recibidas-por-query-validadas-y-con-el-día-final-incluido) |
 
 ### 📊 D. Consultas avanzadas, conteos y paginación
 
-| El problema pide...                                       | Bloque                                                                           |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Contar todos                                              | [#15](#15-contar-todos-los-registros)                                            |
-| Traer los últimos N                                       | [#18](#18-traer-los-n-más-recientes)                                             |
-| Paginación                                                | [#19](#19-paginar-resultados-con-total)                                          |
-| Consulta compleja / agregaciones (QueryBuilder)           | [#24](#24-consulta-con-querybuilder-cuando-find-no-alcanza)                      |
-| Varias operaciones que deben ocurrir juntas (transacción) | [#25](#25-transacción-varias-operaciones-que-deben-tener-éxito-juntas)           |
-| Campo calculado en la respuesta (cupos reservados, OWNER) | [#100](#100-campo-calculado-en-la-respuesta-map-cupos-reservados-etiqueta-owner) |
+| El problema pide...                                       | Bloque                                                                                             |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Contar todos                                              | [#15](#15-contar-todos-los-registros)                                                              |
+| Traer los últimos N                                       | [#18](#18-traer-los-n-más-recientes)                                                               |
+| Paginación                                                | [#19](#19-paginar-resultados-con-total)                                                            |
+| Consulta compleja / agregaciones (QueryBuilder)           | [#24](#24-consulta-con-querybuilder-cuando-find-no-alcanza)                                        |
+| Varias operaciones que deben ocurrir juntas (transacción) | [#25](#25-transacción-varias-operaciones-que-deben-ir-juntas-ej-descontar-cupos--crear-la-reserva) |
+| Campo calculado en la respuesta (cupos reservados, OWNER) | [#100](#100-campo-calculado-en-la-respuesta-map-cupos-reservados-etiqueta-owner)                   |
 
 ### 🔄 E. Cambios de estado puntuales
 
-| El problema pide...                                                     | Bloque                                                                                       |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Activar/desactivar un campo booleano (toggle)                           | [#42](#42-activardesactivar-un-campo-booleano-toggle-sin-tocar-el-resto)                     |
-| Soft delete (no borrar físicamente)                                     | [#65](#65-soft-delete-no-borrar-físicamente-solo-marcar)                                     |
-| Solo uno marcado a la vez (principal / predeterminado)                  | [#69](#69-solo-uno-marcado-a-la-vez-principal--predeterminado--activo)                       |
-| Cambiar un estado `enum` con transición validada                        | [#70](#70-cambiar-un-estado-enum-con-transición-validada-planned--installed)                 |
-| Desactivar de una sola vía (no toggle) si no tiene dependientes activos | [#83](#83-desactivar-de-una-sola-vía-sin-toggle-validando-que-no-tenga-dependientes-activos) |
-| Dar / quitar con el mismo endpoint (like, guardar)                      | [#95](#95-dar--quitar-con-el-mismo-endpoint-toggle-de-relación-like-guardar)                 |
+| El problema pide...                                                     | Bloque                                                                          |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Activar/desactivar un campo booleano (toggle)                           | [#42](#42-activardesactivar-un-campo-booleano-toggle-sin-tocar-el-resto)        |
+| Soft delete (no borrar físicamente)                                     | [#65](#65-soft-delete-no-borrar-físicamente-solo-marcar)                        |
+| Solo uno marcado a la vez (principal / predeterminado)                  | [#69](#69-solo-uno-marcado-a-la-vez-principal--predeterminado--activo)          |
+| Cambiar un estado `enum` con transición validada                        | [#70](#70-cambiar-el-estado-confirmar-instalar-validando-el-estado-actual-enum) |
+| Desactivar de una sola vía (no toggle) si no tiene dependientes activos | [#83](#83-desactivar-evento-solo-si-no-tiene-reservas-activas-sin-toggle)       |
+| Dar / quitar con el mismo endpoint (like, guardar)                      | [#95](#95-dar--quitar-con-el-mismo-endpoint-toggle-de-relación-like-guardar)    |
 
 ### ⚠️ F. Validación de entrada, errores y respuestas HTTP
 
 | El problema pide...                                                 | Bloque                                                                                           |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Que los errores devuelvan el código HTTP correcto                   | [#26](#26-usar-excepciones-propias-de-nestjs-en-vez-de-throw-new-error)                          |
+| Que los errores devuelvan el código HTTP correcto                   | [#26](#26-lanzar-errores-con-excepciones-de-nest-404-409-400-en-vez-de-throw-new-error)          |
 | Validar el formato de los datos que llegan (DTO)                    | [#27](#27-validaciones-en-el-dto-con-class-validator)                                            |
 | Manejar excepciones HTTP estándar (tabla de códigos)                | [#33](#33-excepciones-http-estándar-en-nestjs)                                                   |
 | Forzar el código HTTP de respuesta (`@HttpCode`)                    | [#43](#43-httpcode-explícito-en-cada-endpoint)                                                   |
-| Controller defensivo con try/catch (combinable con 43)              | [#44](#44-variante-defensiva-del-controller-con-trycatch-combinable-con-el-bloque-43)            |
+| Controller defensivo con try/catch (combinable con 43)              | [#44](#44-controller-con-trycatch-para-nunca-responder-un-500-sin-mensaje)                       |
 | Pipe personalizado para validar id positivo                         | [#45](#45-pipe-personalizado-positiveintpipe-en-vez-de-parseintpipe)                             |
 | Excepción personalizada con el formato del proyecto                 | [#54](#54-excepción-personalizada-siguiendo-el-estilo-del-proyecto-no-notfoundexception-a-secas) |
 | Validar ids UUID en la ruta (`ParseUUIDPipe`)                       | [#76](#76-ids-tipo-uuid-en-la-ruta-parseuuidpipe)                                                |
@@ -5153,28 +5153,28 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 
 ### 🛂 H. Autorización avanzada (permisos, roles, ownership)
 
-| El problema pide...                                           | Bloque                                                                                |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Proteger una ruta según el rol del usuario (Guard + `@Roles`) | [#47](#47-guard--decorador-roles-para-proteger-rutas-según-el-rol-del-usuario)        |
-| Autorización mixta: ADMIN o dueño del recurso                 | [#55](#55-autorización-mixta-admin-o-dueño-del-recurso)                               |
-| Guard de permisos con lógica OR (al menos uno)                | [#61](#61-guard-de-permisos-con-lógica-or-variante-del-permissionsguard-que-usa-and)  |
-| Guard de "solo dueño" sin pasar por permisos                  | [#62](#62-guard-de-solo-dueño-sin-pasar-por-permisos-ownership-puro)                  |
-| Buscar + validar dueño (o admin) en un método reutilizable    | [#91](#91-método-privado-reutilizable-buscar--validar-dueño-o-admin-en-un-solo-lugar) |
+| El problema pide...                                           | Bloque                                                                               |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Proteger una ruta según el rol del usuario (Guard + `@Roles`) | [#47](#47-guard--decorador-roles-para-proteger-rutas-según-el-rol-del-usuario)       |
+| Autorización mixta: ADMIN o dueño del recurso                 | [#55](#55-ver-un-registro-solo-si-es-admin-o-el-dueño-403-si-no)                     |
+| Guard de permisos con lógica OR (al menos uno)                | [#61](#61-guard-de-permisos-con-lógica-or-variante-del-permissionsguard-que-usa-and) |
+| Guard de "solo dueño" sin pasar por permisos                  | [#62](#62-guard-de-solo-dueño-sin-pasar-por-permisos-ownership-puro)                 |
+| Buscar + validar dueño (o admin) en un método reutilizable    | [#91](#91-validar-dueño-o-admin-en-un-método-reutilizable-findownedorfail)           |
 
 ### 📏 I. Reglas de negocio (fechas, cupos, límites)
 
-| El problema pide...                                           | Bloque                                                                                           |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Validar que una fecha sea futura                              | [#50](#50-validar-que-una-fecha-sea-futura)                                                      |
-| Validar que algo ocurra dentro de una ventana de N días       | [#51](#51-validar-que-un-evento-ocurra-dentro-de-una-ventana-de-n-días)                          |
-| Descontar/reponer cupos con validación de capacidad           | [#52](#52-descontar--reponer-cupos-disponibles-con-validación-de-capacidad)                      |
-| Limitar cantidad de recursos activos por usuario              | [#53](#53-limitar-cuántos-recursos-activos-puede-tener-un-mismo-usuario-sobre-otro-recurso)      |
-| Validador personalizado `@IsFutureDate`                       | [#63](#63-validador-personalizado-reutilizable-isfuturedate)                                     |
-| Validador personalizado `@Match` (confirmar contraseña)       | [#64](#64-validador-match-confirmar-contraseña)                                                  |
-| Regla que depende de DOS campos (create y update)             | [#72](#72-regla-de-negocio-que-depende-de-dos-campos-en-create-y-en-update)                      |
-| Update con capacidad ≥ reservados (recalcular cupos)          | [#82](#82-actualizar-recalculando-cupos-la-capacidad-no-puede-quedar-por-debajo-de-lo-reservado) |
-| Límite por usuario SUMANDO cantidades (no contando filas)     | [#84](#84-límite-por-usuario-sumando-cantidades-corrige-el-conteo-del-bloque-53)                 |
-| Update que cambia una cantidad (ajustar cupos por diferencia) | [#87](#87-actualizar-la-cantidad-de-una-reserva-ajustar-cupos-por-la-diferencia)                 |
+| El problema pide...                                           | Bloque                                                                                              |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Validar que una fecha sea futura                              | [#50](#50-crear-con-fecha-futura-e-inicializar-availablespots-con-capacity)                         |
+| Validar que algo ocurra dentro de una ventana de N días       | [#51](#51-validar-que-el-evento-no-haya-ocurrido-y-sea-dentro-de-los-próximos-n-días)               |
+| Descontar/reponer cupos con validación de capacidad           | [#52](#52-descontar-cupos-al-reservar-y-devolverlos-al-cancelar-no-exceder-availablespots)          |
+| Limitar cantidad de recursos activos por usuario              | [#53](#53-límite-por-usuario-contando-reservas-activas-si-cada-reserva-es-de-1-cupo)                |
+| Validador personalizado `@IsFutureDate`                       | [#63](#63-validador-personalizado-reutilizable-isfuturedate)                                        |
+| Validador personalizado `@Match` (confirmar contraseña)       | [#64](#64-validador-match-confirmar-contraseña)                                                     |
+| Regla que depende de DOS campos (create y update)             | [#72](#72-regla-que-depende-de-dos-campos-ej-tracción-solo-para-carros-en-create-y-update)          |
+| Update con capacidad ≥ reservados (recalcular cupos)          | [#82](#82-actualizar-evento-fecha-futura-si-se-modifica--capacidad-no-menor-a-los-cupos-reservados) |
+| Límite por usuario SUMANDO cantidades (no contando filas)     | [#84](#84-límite-por-usuario-sumando-cupos-activos-ej-máximo-5-cupos-por-evento)                    |
+| Update que cambia una cantidad (ajustar cupos por diferencia) | [#87](#87-actualizar-reserva-cambiar-la-cantidad-ajustando-los-cupos-del-evento)                    |
 
 ### 👤 J. Flujos de usuario y cuenta
 
@@ -5197,11 +5197,11 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 
 ### 🧪 L. Recetas armadas (flujos completos, ya combinados)
 
-| El problema pide...                                                                       | Bloque                                                                                     |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Crear una reserva con todas sus reglas (existe, activo, fechas, cupos, límite, descontar) | [#85](#85-receta-armada-crear-una-reserva-completa-orden-de-validaciones--transacción)     |
-| Cancelar una reserva con todas sus reglas (dueño, estado, fecha, liberar cupos)           | [#86](#86-receta-armada-cancelar-una-reserva-completa-dueño--estado--fecha--liberar-cupos) |
-| Comprar el carrito (pedido + items + vaciar carrito)                                      | [#97](#97-receta-armada-comprar-el-carrito-pedido--items-en-una-transacción)               |
+| El problema pide...                                                                       | Bloque                                                                                               |
+| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Crear una reserva con todas sus reglas (existe, activo, fechas, cupos, límite, descontar) | [#85](#85-crear-reserva-completa-evento-existe-activo-no-ocurrió-cupos-límite-y-descontar)           |
+| Cancelar una reserva con todas sus reglas (dueño, estado, fecha, liberar cupos)           | [#86](#86-cancelar-reserva-completa-dueño-no-cancelada-evento-no-ocurrido-liberar-cupos-y-cancelled) |
+| Comprar el carrito (pedido + items + vaciar carrito)                                      | [#97](#97-receta-armada-comprar-el-carrito-pedido--items-en-una-transacción)                         |
 
 ### 🔬 M. Testing
 
