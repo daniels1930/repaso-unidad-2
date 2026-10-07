@@ -4,6 +4,9 @@
 > En cada paso te dice qué hacer y **qué archivo abrir**. El código está
 > en los otros archivos.
 
+> 👉 **Abrí primero [`preparcial_variantes.md`](preparcial_variantes.md)**: el pre-parcial
+> resuelto regla por regla + qué cambiar si el parcial lo pide distinto.
+
 ## 🔎 Buscador: frase del enunciado → dónde está
 
 Cada regla del pre-parcial, copiada tal cual, con el link a la receta
