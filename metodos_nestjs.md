@@ -5,6 +5,10 @@
 > 📌 **Empezá por acá:** buscá tu problema en esta tabla y hacé clic en el
 > número del bloque. Si necesitás juntar varios bloques, mirá después la
 > guía 🧭 "Cómo combinar los bloques", que está más abajo.
+>
+> 🔒 **¿Vas a escribir un controller?** Los de los bloques 1–47 NO traen
+> guards: mirá [cómo se ve un endpoint protegido](#-así-se-ve-un-endpoint-protegido-según-el-método) justo debajo de
+> esta tabla.
 
 Para no tener que escanear una lista de 105 filas, está agrupada por tipo de problema. Buscá primero la categoría que se parece a lo que te piden, y ahí el bloque puntual.
 
@@ -110,17 +114,18 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 
 ### 🔐 G. Autenticación y guards base
 
-| El problema pide...                                                     | Bloque                                                                       |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Guardar la contraseña encriptada (`bcrypt`)                             | [#46](#46-hashear-la-contraseña-antes-de-guardar-típico-en-authuser)         |
-| Proteger un endpoint: token (JWT) + permiso (`@Permissions`)            | [#48](#48-proteger-un-endpoint-con-autenticación-jwt--autorización-permisos) |
-| Saber quién hace la petición (`req.user`, `AuthenticatedRequest`)       | [#49](#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest)          |
-| ¿De dónde sale `req.user`? (recorrido token → guard → controller)       | [#49.1](#491-de-dónde-sale-requser-el-recorrido)                             |
-| ¿Este endpoint lleva `req.user` o solo guards? (proteger ≠ saber quién) | [#49.2](#492-proteger--saber-quién-en-qué-endpoints-va-requser)              |
-| Prefijo en todas las rutas (ej. `api-test/`)                            | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
-| Leer el usuario con `@CurrentUser()` en vez de `@Req()`                 | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
-| Dejar un endpoint público con un guard global (`@Public`)               | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
-| Guards una sola vez sobre el controller + `@Permissions` en cada método | [#101](#101-guards-una-vez-sobre-la-clase--permissions-en-cada-método)       |
+| El problema pide...                                                       | Bloque                                                                       |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Guardar la contraseña encriptada (`bcrypt`)                               | [#46](#46-hashear-la-contraseña-antes-de-guardar-típico-en-authuser)         |
+| Cómo se ve CADA tipo de endpoint ya protegido (POST, GET, PATCH, DELETE…) | [🔒 plantilla](#-así-se-ve-un-endpoint-protegido-según-el-método)            |
+| Proteger un endpoint: token (JWT) + permiso (`@Permissions`)              | [#48](#48-proteger-un-endpoint-con-autenticación-jwt--autorización-permisos) |
+| Saber quién hace la petición (`req.user`, `AuthenticatedRequest`)         | [#49](#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest)          |
+| ¿De dónde sale `req.user`? (recorrido token → guard → controller)         | [#49.1](#491-de-dónde-sale-requser-el-recorrido)                             |
+| ¿Este endpoint lleva `req.user` o solo guards? (proteger ≠ saber quién)   | [#49.2](#492-proteger--saber-quién-en-qué-endpoints-va-requser)              |
+| Prefijo en todas las rutas (ej. `api-test/`)                              | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
+| Leer el usuario con `@CurrentUser()` en vez de `@Req()`                   | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
+| Dejar un endpoint público con un guard global (`@Public`)                 | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
+| Guards una sola vez sobre el controller + `@Permissions` en cada método   | [#101](#101-guards-una-vez-sobre-la-clase--permissions-en-cada-método)       |
 
 ### 🛂 H. Autorización avanzada (permisos, roles, ownership)
 
@@ -181,6 +186,147 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | El problema pide...                                | Bloque                                                               |
 | -------------------------------------------------- | -------------------------------------------------------------------- |
 | Test unitario de un service (repositorio mockeado) | [#105](#105-test-unitario-de-un-service-con-el-repositorio-mockeado) |
+
+---
+
+## 🔒 Así se ve un endpoint PROTEGIDO (según el método)
+
+> ⚠️ **Los controllers de los bloques 1–47 NO traen guards** (muestran solo
+> la lógica). Si el enunciado dice _"todos los recursos limitados según los
+> permisos"_, cada endpoint que copies tiene que verse como los de abajo.
+
+Cada endpoint protegido lleva **dos cosas**:
+
+1. **Guards** → `@UseGuards(AuthGuard('jwt'), PermissionsGuard)`: exige token (401) y revisa permisos (403).
+2. **Permiso** → `@Permissions('nombre_exacto_del_seed')`: cuál permiso necesita ESE endpoint.
+
+Y SOLO si la regla depende de quién hace la petición, además:
+
+3. **Usuario del token** → `@Req() req: AuthenticatedRequest` y `req.user` (ver bloque 49.2).
+
+### Forma A (recomendada): guards UNA vez sobre la clase
+
+Así ningún endpoint queda sin proteger aunque lo copies de un bloque sin
+guards. En cada método solo va su `@Permissions(...)`.
+
+```typescript
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    HttpCode,
+    HttpStatus,
+    Param,
+    ParseIntPipe,
+    Patch,
+    Post,
+    Req,
+    UseGuards,
+} from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { Request } from 'express';
+
+import { Permissions } from '../auth/decorators/permissions.decorator'; // ajustá las rutas a tu proyecto
+import { PermissionsGuard } from '../auth/guards/permissions/permissions.guard';
+import { User } from '../auth/entities/user.entity';
+
+// solo si algún endpoint usa req.user (bloque 49)
+interface AuthenticatedRequest extends Request {
+    user?: User;
+}
+
+@Controller('examples')
+@UseGuards(AuthGuard('jwt'), PermissionsGuard) // 👈 protege TODOS los endpoints de la clase
+export class ExampleController {
+    constructor(private readonly exampleService: ExampleService) {}
+
+    // POST /examples → crear
+    @Post()
+    @HttpCode(HttpStatus.CREATED)
+    @Permissions('create_example')
+    create(@Body() createExampleDto: CreateExampleDto) {
+        return this.exampleService.create(createExampleDto);
+    }
+
+    // GET /examples → listar todos
+    @Get()
+    @Permissions('read_example')
+    findAll() {
+        return this.exampleService.findAll();
+    }
+
+    // GET /examples/user → "mis" registros (usa req.user)
+    // ⚠️ rutas fijas ANTES de @Get(':id')
+    @Get('user')
+    @Permissions('read_own_examples')
+    findMine(@Req() req: AuthenticatedRequest) {
+        return this.exampleService.findMine(req.user!);
+    }
+
+    // GET /examples/:id → ver uno
+    @Get(':id')
+    @Permissions('read_example')
+    findOne(@Param('id', ParseIntPipe) id: number) {
+        return this.exampleService.findOne(id);
+    }
+
+    // PATCH /examples/:id → actualizar
+    @Patch(':id')
+    @Permissions('update_example')
+    update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
+        return this.exampleService.update(id, updateExampleDto);
+    }
+
+    // PATCH /examples/:id/<acción> → desactivar, cancelar, instalar... (sin body)
+    @Patch(':id/deactivate')
+    @Permissions('deactivate_example')
+    deactivate(@Param('id', ParseIntPipe) id: number) {
+        return this.exampleService.deactivate(id);
+    }
+
+    // PATCH /examples/:id/cancel → acción que depende del dueño (usa req.user)
+    @Patch(':id/cancel')
+    @Permissions('cancel_example')
+    cancel(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
+        return this.exampleService.cancel(id, req.user!);
+    }
+
+    // DELETE /examples/:id → eliminar
+    @Delete(':id')
+    @Permissions('delete_example')
+    remove(@Param('id', ParseIntPipe) id: number) {
+        return this.exampleService.remove(id);
+    }
+}
+```
+
+### Forma B: guards en CADA método
+
+Igual de válida, pero si te olvidás en uno, ese queda abierto. Cada
+endpoint se ve así:
+
+```typescript
+@Post()
+@HttpCode(HttpStatus.CREATED)
+@UseGuards(AuthGuard('jwt'), PermissionsGuard) // 👈 en cada método
+@Permissions('create_example')
+create(@Body() createExampleDto: CreateExampleDto) {
+    return this.exampleService.create(createExampleDto);
+}
+```
+
+### ✅ Antes de seguir, revisá
+
+- [ ] **Todos** los endpoints quedan cubiertos (Forma A: el `@UseGuards` está sobre la clase; Forma B: está en cada método).
+- [ ] Cada método tiene su `@Permissions(...)` y el nombre es **EXACTAMENTE** el del `insert.sql` (singular/plural, guiones bajos). Un nombre mal escrito = **403 para todos, incluido el admin**.
+- [ ] Si una acción tiene su propio permiso en el seed (ej. desactivar, cancelar), usá ESE y no el de actualizar.
+- [ ] `@Req() req: AuthenticatedRequest` solo en los endpoints que necesitan saber quién es (bloque 49.2).
+- [ ] Ids con `ParseIntPipe` y rutas fijas (`user`, `between-dates`) antes de `@Get(':id')`.
+
+> Los nombres de permisos de arriba (`create_example`, `read_example`...)
+> son de ejemplo: reemplazalos por los de TU seed. Más detalle en los
+> bloques 48 (en cada método), 101 (sobre la clase) y 49 (`req.user`).
 
 ---
 

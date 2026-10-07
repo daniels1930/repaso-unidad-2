@@ -215,7 +215,7 @@ resuelta.
 - [ ] Rutas fijas (`user`, `between-dates`) ANTES de `@Get(':id')`.
 - [ ] El controller solo recibe y delega: NADA de lógica.
 
-📄 Abrí: [`recetas_parcial.md` → Controllers completos](recetas_parcial.md#6-controllers-completos-con-el-orden-de-rutas-correcto) · guards en la clase: [bloque 101](metodos_nestjs.md#101-guards-una-vez-sobre-la-clase--permissions-en-cada-método) · usuario del token: [bloque 49](metodos_nestjs.md#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest).
+📄 Abrí: [`recetas_parcial.md` → Controllers completos](recetas_parcial.md#6-controllers-completos-con-el-orden-de-rutas-correcto) · guards en la clase: [bloque 101](metodos_nestjs.md#101-guards-una-vez-sobre-la-clase--permissions-en-cada-método) · usuario del token: [bloque 49](metodos_nestjs.md#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest). · plantilla de cada endpoint protegido: [🔒 en `metodos_nestjs.md`](metodos_nestjs.md#-así-se-ve-un-endpoint-protegido-según-el-método).
 
 ---
 
