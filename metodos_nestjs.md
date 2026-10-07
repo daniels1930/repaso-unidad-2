@@ -115,6 +115,8 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | Guardar la contraseña encriptada (`bcrypt`)                             | [#46](#46-hashear-la-contraseña-antes-de-guardar-típico-en-authuser)         |
 | Proteger un endpoint: token (JWT) + permiso (`@Permissions`)            | [#48](#48-proteger-un-endpoint-con-autenticación-jwt--autorización-permisos) |
 | Saber quién hace la petición (`req.user`, `AuthenticatedRequest`)       | [#49](#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest)          |
+| ¿De dónde sale `req.user`? (recorrido token → guard → controller)       | [#49.1](#491-de-dónde-sale-requser-el-recorrido)                             |
+| ¿Este endpoint lleva `req.user` o solo guards? (proteger ≠ saber quién) | [#49.2](#492-proteger--saber-quién-en-qué-endpoints-va-requser)              |
 | Prefijo en todas las rutas (ej. `api-test/`)                            | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
 | Leer el usuario con `@CurrentUser()` en vez de `@Req()`                 | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
 | Dejar un endpoint público con un guard global (`@Public`)               | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
@@ -161,6 +163,8 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | Trampa: la FK no se guarda al crear (`insert: false`)                    | [#80](#80-trampa-columna-fk--relación-con-el-mismo-nombre-insert-false-rompe-los-insert) |
 | Trampa: ids `bigint` y precios `numeric` llegan como texto               | [#81](#81-trampa-ids-bigint-y-columnas-numeric-que-llegan-como-string)                   |
 | Trampa: comparar fechas (string vs `Date`)                               | [#92](#92-trampa-fechas-date-llega-como-string-timestamp-como-date)                      |
+| Error TS2345 al pasar `req.user` al service (`user?: User`)              | [#49.3](#493-trampa-el--de-user-user-error-ts2345)                                       |
+| Error TS1272 al importar `AuthenticatedRequest` desde otro archivo       | [#49.4](#494-trampa-la-interfaz-en-otro-archivo-error-ts1272)                            |
 | Trampa: 403 o 500 en todo lo protegido (`JwtStrategy` sin relaciones)    | [#102](#102-trampa-el-jwtstrategy-no-carga-los-permisos-del-usuario-403-o-500-en-todo)   |
 | Trampa: 401 en todo lo protegido (clave del token vs Postman)            | [#103](#103-trampa-la-clave-del-token-del-login-no-coincide-con-postman-401-en-todo)     |
 
@@ -2341,13 +2345,101 @@ async findByOwner(ownerId: number) {
 }
 ```
 
-> ⚠️ **Trampa de compilación:** si `AuthenticatedRequest` está en OTRO
-> archivo (ej. `interfaces/authenticated-request.interface.ts`), con el
-> `tsconfig` del curso (`isolatedModules` + `emitDecoratorMetadata`) el
-> proyecto no compila (_error TS1272_). Importala con `import type`:
-> `import type { AuthenticatedRequest } from '../interfaces/authenticated-request.interface';`.
-> Declarada en el mismo archivo del controller, como arriba, no hay
-> problema.
+#### 49.1 ¿De dónde sale `req.user`? (el recorrido)
+
+El body NO trae el usuario (Postman manda, por ejemplo,
+`{ "eventId": 1, "quantity": 2 }`). El usuario sale del **token**, y llega
+a tu controller así:
+
+```
+Postman manda la petición con el token en el header:
+    Authorization: Bearer eyJhbGc...
+          ↓
+① AuthGuard('jwt')   → revisa que el token sea válido          (si no → 401)
+          ↓
+② JwtStrategy        → busca a ESE usuario en la BD y lo pega
+                        en la petición como  req.user
+          ↓
+③ PermissionsGuard   → revisa los permisos de req.user         (si no → 403)
+          ↓
+④ Tu controller      → lee req.user y se lo pasa al service
+```
+
+- ①, ② y ③ normalmente **ya vienen hechos** en el proyecto del parcial ("sistema de permisos ya configurado"). Vos trabajás en ④.
+- `req.user` **solo existe si el endpoint tiene `AuthGuard('jwt')`**. Sin el guard, nadie lee el token y `req.user` llega vacío.
+- La `interface AuthenticatedRequest` NO hace nada en ejecución: solo le explica a TypeScript que tu petición trae un `user` de tipo `User`, para que te deje escribir `req.user.id` y te autocomplete.
+
+#### 49.2 Proteger ≠ saber quién (¿en qué endpoints va `req.user`?)
+
+Son dos cosas DISTINTAS:
+
+|                                                                                | ¿Para qué sirve?                                           | ¿Dónde va?                                  |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------- | ------------------------------------------- |
+| **Guards** (`@UseGuards(AuthGuard('jwt'), PermissionsGuard)` + `@Permissions`) | **Proteger**: que solo entre quien tiene token y permiso   | En **TODOS** los endpoints protegidos       |
+| **`AuthenticatedRequest`** (`@Req() req` + `req.user`)                         | **Saber quién** hizo la petición, para usarlo en una regla | **Solo** donde la regla depende del usuario |
+
+Los guards funcionan SOLOS: revisan token y permisos sin que escribas
+`req.user`. Pregunta para decidir: _"¿mi service necesita saber QUIÉN es
+para cumplir la regla?"_
+
+| Endpoint (pre-parcial Event / Reservation)                                 | ¿Guards? | ¿`req.user`? | Por qué                                             |
+| -------------------------------------------------------------------------- | -------- | ------------ | --------------------------------------------------- |
+| Todos los de **eventos** (crear, listar, actualizar, desactivar, eliminar) | ✅       | ❌           | Ninguna regla de eventos depende de quién lo pide   |
+| `POST /reservations`                                                       | ✅       | ✅           | La reserva se guarda a nombre del usuario del token |
+| `GET /reservations/user`                                                   | ✅       | ✅           | "Mis" reservas: hay que saber de quién              |
+| `GET /reservations/:id`                                                    | ✅       | ✅           | "ADMIN o propietario": hay que comparar             |
+| `PATCH /reservations/:id/cancel`                                           | ✅       | ✅           | "Debe pertenecer al usuario autenticado"            |
+| `GET /reservations` (todas)                                                | ✅       | ❌           | El permiso ya limita quién puede verlas todas       |
+
+> 💡 Por eso la interfaz va en el controller de **reservas**, no en el de
+> eventos. Si la declarás donde nadie la usa, VS Code avisa _"is declared
+> but never used"_.
+
+#### 49.3 Trampa: el `?` de `user?: User` (error TS2345)
+
+Si el enunciado te da la interfaz con el usuario **opcional**:
+
+```typescript
+interface AuthenticatedRequest extends Request {
+    user?: User; // 👈 con "?"
+}
+```
+
+entonces `req.user` es `User | undefined`, y si tu service espera un
+`User`, la línea `this.reservationService.create(dto, req.user)` NO
+compila (_"Argument of type 'User | undefined' is not assignable to
+parameter of type 'User'"_). Dos salidas:
+
+```typescript
+// Opción A (la más simple): afirmar que existe — el AuthGuard('jwt') lo garantiza
+return this.reservationService.create(dto, req.user!);
+
+// Opción B: el service lo recibe opcional y lo valida
+async create(createReservationDto: CreateReservationDto, currentUser?: User) {
+    if (!currentUser) {
+        throw new UnauthorizedException('User not authenticated');
+    }
+    // ...
+}
+```
+
+> Si en vez de `user?: User` escribís `user: User` (sin `?`, como en el
+> código de arriba de este bloque), el problema no aparece. Si el
+> enunciado da el "ejemplo esperado" con `?`, respetalo y usá la opción A.
+
+#### 49.4 Trampa: la interfaz en OTRO archivo (error TS1272)
+
+Si `AuthenticatedRequest` está en otro archivo (ej.
+`interfaces/authenticated-request.interface.ts`), con el `tsconfig` del
+curso (`isolatedModules` + `emitDecoratorMetadata`) el proyecto no
+compila (_error TS1272_). Importala con `import type`:
+
+```typescript
+import type { AuthenticatedRequest } from '../interfaces/authenticated-request.interface';
+```
+
+Declarada en el mismo archivo del controller (como arriba en este
+bloque), no hay problema.
 
 ---
 
