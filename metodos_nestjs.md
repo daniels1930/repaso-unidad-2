@@ -123,6 +123,7 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | ¿De dónde sale `req.user`? (recorrido token → guard → controller)         | [#49.1](#491-de-dónde-sale-requser-el-recorrido)                             |
 | ¿Este endpoint lleva `req.user` o solo guards? (proteger ≠ saber quién)   | [#49.2](#492-proteger--saber-quién-en-qué-endpoints-va-requser)              |
 | ¿Qué frases del enunciado piden `req.user`? (cualquier dominio)           | [#49.3](#493-cuándo-va-requser-en-cualquier-parcial-frases-que-lo-piden)     |
+| `req.user` en POST, GET, PATCH y DELETE (controller + service completos)  | [#49.4](#494-requser-en-cada-método-http-controller--service-completos)      |
 | Prefijo en todas las rutas (ej. `api-test/`)                              | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
 | Leer el usuario con `@CurrentUser()` en vez de `@Req()`                   | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
 | Dejar un endpoint público con un guard global (`@Public`)                 | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
@@ -169,8 +170,8 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | Trampa: la FK no se guarda al crear (`insert: false`)                    | [#80](#80-trampa-columna-fk--relación-con-el-mismo-nombre-insert-false-rompe-los-insert) |
 | Trampa: ids `bigint` y precios `numeric` llegan como texto               | [#81](#81-trampa-ids-bigint-y-columnas-numeric-que-llegan-como-string)                   |
 | Trampa: comparar fechas (string vs `Date`)                               | [#92](#92-trampa-fechas-date-llega-como-string-timestamp-como-date)                      |
-| Error TS2345 al pasar `req.user` al service (`user?: User`)              | [#49.4](#494-trampa-el--de-user-user-error-ts2345)                                       |
-| Error TS1272 al importar `AuthenticatedRequest` desde otro archivo       | [#49.5](#495-trampa-la-interfaz-en-otro-archivo-error-ts1272)                            |
+| Error TS2345 al pasar `req.user` al service (`user?: User`)              | [#49.5](#495-trampa-el--de-user-user-error-ts2345)                                       |
+| Error TS1272 al importar `AuthenticatedRequest` desde otro archivo       | [#49.6](#496-trampa-la-interfaz-en-otro-archivo-error-ts1272)                            |
 | Trampa: 403 o 500 en todo lo protegido (`JwtStrategy` sin relaciones)    | [#102](#102-trampa-el-jwtstrategy-no-carga-los-permisos-del-usuario-403-o-500-en-todo)   |
 | Trampa: 401 en todo lo protegido (clave del token vs Postman)            | [#103](#103-trampa-la-clave-del-token-del-login-no-coincide-con-postman-401-en-todo)     |
 
@@ -2596,10 +2597,14 @@ esta regla?"_** Si sí → `req.user`.
 | Red social | Publicar, borrar solo SU publicación, dar like, seguir (no a sí mismo), "mi feed"            | Listar publicaciones públicas, ver una publicación                |
 | Cursos     | Inscribirse, "mis cursos", retirarse (debe ser suya la inscripción)                          | Crear cursos (admin), listar cursos                               |
 
-**`req.user` va en CUALQUIER método HTTP (no solo GET).** Lo que cambia es
-para qué lo usa el service. En el controller siempre es igual: se agrega
-`@Req() req: AuthenticatedRequest` como **un parámetro más** y se le pasa
-`req.user!` al service como **último argumento**:
+#### 49.4 `req.user` en cada método HTTP (controller + service completos)
+
+`req.user` NO es solo para GET: va en **cualquier método** (POST, GET,
+PATCH, DELETE) cuando la regla depende de quién hace la petición.
+
+**Controller** — siempre igual: `@Req() req: AuthenticatedRequest` como
+**un parámetro más**, y `req.user!` al service como **último argumento**
+(los guards vienen de la clase, ver la sección 🔒 al principio):
 
 ```typescript
 // POST → crear algo A NOMBRE del usuario (el dueño sale del token, no del body)
@@ -2649,7 +2654,7 @@ remove(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) 
 }
 ```
 
-Y en el service, el usuario llega como un parámetro más (`currentUser`):
+**Qué hace el service con el usuario en cada método:**
 
 | Método                  | Qué hace el service con `currentUser`                          | Bloque      |
 | ----------------------- | -------------------------------------------------------------- | ----------- |
@@ -2659,26 +2664,101 @@ Y en el service, el usuario llega como un parámetro más (`currentUser`):
 | `PATCH` editar / acción | Busca + 404, si no es el dueño → 403, y recién ahí modifica    | 86 / 91     |
 | `DELETE`                | Busca + 404, si no es el dueño → 403, y recién ahí borra       | 91          |
 
+**Service** — un método por cada endpoint de arriba. El usuario llega como
+último parámetro (`currentUser`):
+
 ```typescript
-// ejemplo de service: borrar solo si es suyo (el mismo patrón sirve para editar o cancelar)
-async remove(id: number, currentUser: User) {
-    const example = await this.exampleRepository.findOne({
-        where: { id },
-        relations: { owner: true }, // 👈 hay que traer al dueño para poder compararlo
-    });
-    if (!example) {
-        throw new NotFoundException(`Example with id ${id} not found`);
-    }
-    if (example.owner.id !== currentUser.id) {
-        throw new ForbiddenException('You can only delete your own records');
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { User } from '../auth/entities/user.entity'; // ajustá las rutas a tu proyecto
+
+import { Example, ExampleStatus } from './entities/example.entity';
+import { CreateExampleDto } from './dto/create-example.dto';
+import { UpdateExampleDto } from './dto/update-example.dto';
+
+@Injectable()
+export class ExampleService {
+    constructor(
+        @InjectRepository(Example)
+        private readonly exampleRepository: Repository<Example>,
+    ) {}
+
+    // POST → crear A NOMBRE del usuario (el dueño sale del token, nunca del body)
+    async create(createExampleDto: CreateExampleDto, currentUser: User) {
+        const newExample = this.exampleRepository.create({
+            ...createExampleDto,
+            owner: currentUser,
+        });
+        return await this.exampleRepository.save(newExample);
     }
 
-    await this.exampleRepository.delete(id);
-    return { message: 'Example deleted' };
+    // GET /user → solo LOS SUYOS
+    async findMine(currentUser: User) {
+        return await this.exampleRepository.find({
+            where: { owner: { id: currentUser.id } },
+        });
+    }
+
+    // privado: buscar + 404 + dueño (o admin) + 403, en UN solo lugar (bloque 91).
+    // allowAdmin: true para VER; false para editar / cancelar / borrar ("solo el dueño")
+    private async findOwnedOrFail(id: number, currentUser: User, allowAdmin: boolean) {
+        const example = await this.exampleRepository.findOne({
+            where: { id },
+            relations: { owner: true }, // 👈 sin esto, example.owner es undefined y no se puede comparar
+        });
+        if (!example) {
+            throw new NotFoundException(`Example with id ${id} not found`);
+        }
+
+        const isOwner = example.owner.id === currentUser.id;
+        const isAdmin = allowAdmin && currentUser.role?.name === 'admin'; // nombre del rol: el de TU seed
+        if (!isOwner && !isAdmin) {
+            throw new ForbiddenException('You do not have access to this resource');
+        }
+        return example;
+    }
+
+    // GET /:id → ADMIN o el dueño
+    async findOne(id: number, currentUser: User) {
+        return await this.findOwnedOrFail(id, currentUser, true);
+    }
+
+    // PATCH /:id → editar solo si es SUYO
+    async update(id: number, updateExampleDto: UpdateExampleDto, currentUser: User) {
+        const example = await this.findOwnedOrFail(id, currentUser, false);
+        return await this.exampleRepository.save({ ...example, ...updateExampleDto });
+    }
+
+    // PATCH /:id/cancel → cancelar solo si es SUYO y no estaba cancelado
+    async cancel(id: number, currentUser: User) {
+        const example = await this.findOwnedOrFail(id, currentUser, false);
+        if (example.status === ExampleStatus.Cancelled) {
+            throw new ConflictException('This Example was already cancelled');
+        }
+
+        example.status = ExampleStatus.Cancelled;
+        await this.exampleRepository.save(example);
+        return { message: 'Example cancelled' };
+    }
+
+    // DELETE /:id → borrar solo si es SUYO
+    async remove(id: number, currentUser: User) {
+        await this.findOwnedOrFail(id, currentUser, false);
+        await this.exampleRepository.delete(id);
+        return { message: 'Example deleted' };
+    }
 }
 ```
 
-#### 49.4 Trampa: el `?` de `user?: User` (error TS2345)
+> 💡 **Para que esto funcione:** (1) el `JwtStrategy` tiene que cargar el
+> rol del usuario, si no `currentUser.role` es `undefined` (bloque 102);
+> (2) el `UpdateExampleDto` NO debería dejar cambiar el dueño (`OmitType`,
+> bloque 75); (3) si cancelar también devuelve cupos o stock, usá la receta
+> completa del bloque 86 (con transacción).
+
+#### 49.5 Trampa: el `?` de `user?: User` (error TS2345)
 
 Si el enunciado te da la interfaz con el usuario **opcional**:
 
@@ -2710,7 +2790,7 @@ async create(createReservationDto: CreateReservationDto, currentUser?: User) {
 > código de arriba de este bloque), el problema no aparece. Si el
 > enunciado da el "ejemplo esperado" con `?`, respetalo y usá la opción A.
 
-#### 49.5 Trampa: la interfaz en OTRO archivo (error TS1272)
+#### 49.6 Trampa: la interfaz en OTRO archivo (error TS1272)
 
 Si `AuthenticatedRequest` está en otro archivo (ej.
 `interfaces/authenticated-request.interface.ts`), con el `tsconfig` del
