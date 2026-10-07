@@ -209,6 +209,11 @@ Y SOLO si la regla depende de quién hace la petición, además:
 Así ningún endpoint queda sin proteger aunque lo copies de un bloque sin
 guards. En cada método solo va su `@Permissions(...)`.
 
+> ⚠️ **Los guards NO están en los métodos: están en la línea
+> `@UseGuards(...)` debajo de `@Controller(...)`.** Si copiás un método
+> suelto a un controller que no tiene esa línea, ese endpoint queda SIN
+> proteger (`@Permissions` solo es una etiqueta: sin el guard nadie la lee).
+
 ```typescript
 import {
     Body,
@@ -227,9 +232,14 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 
-import { Permissions } from '../auth/decorators/permissions.decorator'; // ajustá las rutas a tu proyecto
+// ajustá las rutas a tu proyecto
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions/permissions.guard';
 import { User } from '../auth/entities/user.entity';
+
+import { ExampleService } from './example.service';
+import { CreateExampleDto } from './dto/create-example.dto';
+import { UpdateExampleDto } from './dto/update-example.dto';
 
 // solo si algún endpoint usa req.user (bloque 49)
 interface AuthenticatedRequest extends Request {
@@ -237,11 +247,11 @@ interface AuthenticatedRequest extends Request {
 }
 
 @Controller('examples')
-@UseGuards(AuthGuard('jwt'), PermissionsGuard) // 👈 protege TODOS los endpoints de la clase
+@UseGuards(AuthGuard('jwt'), PermissionsGuard) // 👈 ESTA línea protege TODOS los endpoints de la clase
 export class ExampleController {
     constructor(private readonly exampleService: ExampleService) {}
 
-    // POST /examples → crear
+    // POST /examples → crear                         🔒 guards: vienen de la clase
     @Post()
     @HttpCode(HttpStatus.CREATED)
     @Permissions('create_example')
@@ -249,51 +259,59 @@ export class ExampleController {
         return this.exampleService.create(createExampleDto);
     }
 
-    // GET /examples → listar todos
+    // GET /examples → listar todos                   🔒 guards: vienen de la clase
     @Get()
+    @HttpCode(HttpStatus.OK)
     @Permissions('read_example')
     findAll() {
         return this.exampleService.findAll();
     }
 
-    // GET /examples/user → "mis" registros (usa req.user)
+    // GET /examples/user → "mis" registros (usa req.user)   🔒 guards: vienen de la clase
     // ⚠️ rutas fijas ANTES de @Get(':id')
     @Get('user')
+    @HttpCode(HttpStatus.OK)
     @Permissions('read_own_examples')
     findMine(@Req() req: AuthenticatedRequest) {
         return this.exampleService.findMine(req.user!);
     }
 
-    // GET /examples/:id → ver uno
+    // GET /examples/:id → ver uno                    🔒 guards: vienen de la clase
     @Get(':id')
+    @HttpCode(HttpStatus.OK)
     @Permissions('read_example')
     findOne(@Param('id', ParseIntPipe) id: number) {
         return this.exampleService.findOne(id);
     }
 
-    // PATCH /examples/:id → actualizar
+    // PATCH /examples/:id → actualizar               🔒 guards: vienen de la clase
     @Patch(':id')
+    @HttpCode(HttpStatus.OK)
     @Permissions('update_example')
     update(@Param('id', ParseIntPipe) id: number, @Body() updateExampleDto: UpdateExampleDto) {
         return this.exampleService.update(id, updateExampleDto);
     }
 
-    // PATCH /examples/:id/<acción> → desactivar, cancelar, instalar... (sin body)
+    // PATCH /examples/:id/<acción> → desactivar, instalar... (sin body)   🔒 guards: vienen de la clase
     @Patch(':id/deactivate')
+    @HttpCode(HttpStatus.OK)
     @Permissions('deactivate_example')
     deactivate(@Param('id', ParseIntPipe) id: number) {
         return this.exampleService.deactivate(id);
     }
 
-    // PATCH /examples/:id/cancel → acción que depende del dueño (usa req.user)
+    // PATCH /examples/:id/cancel → acción que depende del dueño (usa req.user)   🔒 guards: vienen de la clase
     @Patch(':id/cancel')
+    @HttpCode(HttpStatus.OK)
     @Permissions('cancel_example')
     cancel(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
         return this.exampleService.cancel(id, req.user!);
     }
 
-    // DELETE /examples/:id → eliminar
+    // DELETE /examples/:id → eliminar                🔒 guards: vienen de la clase
+    // (si el enunciado pide 204 sin body, usá HttpStatus.NO_CONTENT y no devuelvas nada)
     @Delete(':id')
+    @HttpCode(HttpStatus.OK)
     @Permissions('delete_example')
     remove(@Param('id', ParseIntPipe) id: number) {
         return this.exampleService.remove(id);
