@@ -2596,6 +2596,88 @@ esta regla?"_** Si sí → `req.user`.
 | Red social | Publicar, borrar solo SU publicación, dar like, seguir (no a sí mismo), "mi feed"            | Listar publicaciones públicas, ver una publicación                |
 | Cursos     | Inscribirse, "mis cursos", retirarse (debe ser suya la inscripción)                          | Crear cursos (admin), listar cursos                               |
 
+**`req.user` va en CUALQUIER método HTTP (no solo GET).** Lo que cambia es
+para qué lo usa el service. En el controller siempre es igual: se agrega
+`@Req() req: AuthenticatedRequest` como **un parámetro más** y se le pasa
+`req.user!` al service como **último argumento**:
+
+```typescript
+// POST → crear algo A NOMBRE del usuario (el dueño sale del token, no del body)
+@Post()
+@Permissions('create_example')
+create(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedRequest) {
+    return this.exampleService.create(createExampleDto, req.user!);
+}
+
+// GET → solo LOS SUYOS ("mis X")
+@Get('user')
+@Permissions('read_own_examples')
+findMine(@Req() req: AuthenticatedRequest) {
+    return this.exampleService.findMine(req.user!);
+}
+
+// GET :id → solo ADMIN o el dueño
+@Get(':id')
+@Permissions('read_example')
+findOne(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
+    return this.exampleService.findOne(id, req.user!);
+}
+
+// PATCH → editar solo si es SUYO
+@Patch(':id')
+@Permissions('update_example')
+update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateExampleDto: UpdateExampleDto,
+    @Req() req: AuthenticatedRequest,
+) {
+    return this.exampleService.update(id, updateExampleDto, req.user!);
+}
+
+// PATCH acción → cancelar / devolver solo si es SUYO
+@Patch(':id/cancel')
+@Permissions('cancel_example')
+cancel(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
+    return this.exampleService.cancel(id, req.user!);
+}
+
+// DELETE → borrar solo si es SUYO
+@Delete(':id')
+@Permissions('delete_example')
+remove(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
+    return this.exampleService.remove(id, req.user!);
+}
+```
+
+Y en el service, el usuario llega como un parámetro más (`currentUser`):
+
+| Método                  | Qué hace el service con `currentUser`                          | Bloque      |
+| ----------------------- | -------------------------------------------------------------- | ----------- |
+| `POST` crear            | Lo guarda como dueño: `create({ ...dto, owner: currentUser })` | 66          |
+| `GET` mis X             | Filtra: `where: { owner: { id: currentUser.id } }`             | 49 (arriba) |
+| `GET :id`               | Busca + 404, y si no es admin ni dueño → 403                   | 55 / 91     |
+| `PATCH` editar / acción | Busca + 404, si no es el dueño → 403, y recién ahí modifica    | 86 / 91     |
+| `DELETE`                | Busca + 404, si no es el dueño → 403, y recién ahí borra       | 91          |
+
+```typescript
+// ejemplo de service: borrar solo si es suyo (el mismo patrón sirve para editar o cancelar)
+async remove(id: number, currentUser: User) {
+    const example = await this.exampleRepository.findOne({
+        where: { id },
+        relations: { owner: true }, // 👈 hay que traer al dueño para poder compararlo
+    });
+    if (!example) {
+        throw new NotFoundException(`Example with id ${id} not found`);
+    }
+    if (example.owner.id !== currentUser.id) {
+        throw new ForbiddenException('You can only delete your own records');
+    }
+
+    await this.exampleRepository.delete(id);
+    return { message: 'Example deleted' };
+}
+```
+
 #### 49.4 Trampa: el `?` de `user?: User` (error TS2345)
 
 Si el enunciado te da la interfaz con el usuario **opcional**:
