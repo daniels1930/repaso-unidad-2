@@ -1,5 +1,185 @@
 # Recetario de métodos — Service + Controller NestJS/TypeORM (código en inglés, consistente)
 
+## Tabla resumen — ¿qué bloque uso según lo que me piden?
+
+> 📌 **Empezá por acá:** buscá tu problema en esta tabla y hacé clic en el
+> número del bloque. Si necesitás juntar varios bloques, mirá después la
+> guía 🧭 "Cómo combinar los bloques", que está más abajo.
+
+Para no tener que escanear una lista de 105 filas, está agrupada por tipo de problema. Buscá primero la categoría que se parece a lo que te piden, y ahí el bloque puntual.
+
+### 🧱 A. CRUD básico (crear, leer, actualizar, eliminar)
+
+| El problema pide...                                                                      | Bloque                                                                                      |
+| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Crear algo simple, sin relaciones (ej. una categoría)                                    | [#1](#1-crear-un-registro-simple-sin-relaciones)                                            |
+| Crear algo que pertenece a otro registro (ej. reserva de un evento: buscar por id + 404) | [#2](#2-crear-un-registro-que-pertenece-a-otra-entidad-buscar-el-relacionado-por-id--404)   |
+| Crear un registro que une dos entidades (tabla intermedia: inscripción, rol-permiso)     | [#3](#3-crear-un-registro-que-une-dos-entidades-tabla-intermedia-inscripción-rol-permiso)   |
+| Crear sin repetir la misma combinación (ej. no inscribirse dos veces) → 409              | [#4](#4-crear-sin-repetir-la-misma-combinación-ej-no-inscribirse-dos-veces-al-mismo-curso)  |
+| Listar todos (`GET /recurso`), con o sin su relación                                     | [#5](#5-buscar-todos-trayendo-la-relación-join)                                             |
+| Ver uno por id (`GET /recurso/:id`)                                                      | [#7](#7-buscar-uno-por-id)                                                                  |
+| Actualizar campos simples (`PATCH /:id`) sin reglas                                      | [#10](#10-actualizar-campos-simples-sin-tocar-relaciones)                                   |
+| Actualizar cambiando a qué registro pertenece (reasignar una relación)                   | [#11](#11-actualizar-cambiando-a-qué-registro-pertenece-reasignar-una-relación)             |
+| Actualizar cambiando DOS relaciones (tabla intermedia)                                   | [#12](#12-actualizar-reasignando-dos-relaciones-tabla-intermedia)                           |
+| Eliminar por id (`DELETE /:id`), simple                                                  | [#13](#13-eliminar-por-id-simple-cualquier-entidad)                                         |
+| Eliminar solo si no tiene registros asociados (ej. evento con reservas → 409)            | [#14](#14-eliminar-solo-si-no-tiene-registros-asociados-ej-evento-con-reservas--409)        |
+| No permitir duplicados de un campo único al CREAR (ej. email, nombre) → 409              | [#17](#17-verificar-si-ya-existe-antes-de-crear-evitar-duplicados-por-campo-único)          |
+| No permitir duplicados de un campo único al ACTUALIZAR                                   | [#67](#67-validar-un-campo-único-también-al-actualizar-no-solo-al-crear)                    |
+| Crear el relacionado automáticamente si no existe (buscar-o-crear)                       | [#68](#68-buscar-o-crear-el-relacionado-si-no-existe-se-crea-solo)                          |
+| Crear copiando datos de otra entidad (ej. el precio del producto)                        | [#74](#74-crear-un-registro-copiando-datos-de-otra-entidad-con-estado-por-defecto)          |
+| Que el update NO deje cambiar ciertos campos (`OmitType`)                                | [#75](#75-updatedto-que-no-deja-cambiar-ciertos-campos-omittype)                            |
+| Borrar en cascada (al borrar el padre se borran los hijos)                               | [#78](#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)                              |
+| Eliminar evento o reserva: validar que exista + mensaje, sin 500                         | [#89](#89-eliminar-evento-o-reserva-validar-que-exista-sin-500-por-fk-y-con-mensaje-propio) |
+| Agregar al carrito: si ya está, sumar la cantidad                                        | [#96](#96-si-ya-existe-sumar-en-vez-de-duplicar-agregar-al-carrito)                         |
+| Al crear algo, crear otro automáticamente (notificación)                                 | [#99](#99-efecto-secundario-al-crear-un-registro-crear-otro-automáticamente-notificación)   |
+
+### 🔗 B. Relaciones especiales (`OneToOne` / `ManyToMany`)
+
+| El problema pide...                                                             | Bloque                                                                                      |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Relación uno a uno (`@OneToOne`)                                                | [#20](#20-relación-onetoone-uno-a-uno)                                                      |
+| Relación muchos a muchos sin tabla propia (`@ManyToMany`)                       | [#21](#21-relación-manytomany-directa-sin-service-de-tabla-intermedia)                      |
+| Quitar un elemento de una relación muchos a muchos                              | [#40](#40-quitar-un-elemento-de-una-relación-manytomany)                                    |
+| Reemplazar toda la lista de una relación muchos a muchos                        | [#41](#41-reemplazar-todos-los-relacionados-de-una-manytomany-de-una-sola-vez)              |
+| Relación opcional: asociar / desasociar (ej. publicación con vehículo opcional) | [#93](#93-relación-opcional-nullable-asociar-reasignar-o-desasociar)                        |
+| Seguir usuarios (dos relaciones a `User`), sin seguirse a sí mismo              | [#94](#94-dos-relaciones-a-la-misma-entidad-seguir-usuarios-no-a-sí-mismo-y-sin-duplicados) |
+| Responder a un comentario (relación con la misma tabla)                         | [#98](#98-relación-con-la-misma-tabla-respuestas-a-comentarios-parent--replies)             |
+
+### 🔍 C. Búsquedas y filtros
+
+| El problema pide...                                                                 | Bloque                                                                                        |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Listar todos trayendo la relación de la relación (2 niveles)                        | [#6](#6-buscar-todos-trayendo-dos-niveles-de-relación-anidados)                               |
+| Filtrar por un campo de la tabla relacionada (ej. productos de la categoría "Tech") | [#8](#8-buscar-filtrando-por-un-campo-de-la-relación-no-propio)                               |
+| Buscar texto que contenga una palabra (`Like`)                                      | [#9](#9-buscar-por-texto-parcial-like--contiene)                                              |
+| Contar los que pertenecen a otro (ej. cuántas reservas tiene un evento)             | [#16](#16-contar-filtrando-por-relación)                                                      |
+| Filtrar mayor que / menor que / entre dos valores o fechas (`Between`)              | [#22](#22-filtrar-con-operadores-de-comparación-morethan-lessthan-between)                    |
+| Filtrar por una lista de ids (`In`)                                                 | [#23](#23-filtrar-por-una-lista-de-ids-in)                                                    |
+| Buscar texto sin importar mayúsculas (`ILike`)                                      | [#28](#28-buscar-por-texto-parcial-ignorando-mayúsculas-y-minúsculas-ilike)                   |
+| Filtrar mayor o igual (`MoreThanOrEqual`)                                           | [#29](#29-filtrar-por-valores-mayores-o-iguales-morethanorequal)                              |
+| Filtrar menor o igual (`LessThanOrEqual`)                                           | [#30](#30-filtrar-por-valores-menores-o-iguales-lessthanorequal)                              |
+| Buscar los que tienen un campo vacío (`IsNull`)                                     | [#31](#31-buscar-registros-donde-un-campo-sea-null-isnull)                                    |
+| Traer todos MENOS los de un valor (`Not`)                                           | [#32](#32-negar-una-condición-not)                                                            |
+| Buscar texto que EMPIECE con algo (`StartsWith`)                                    | [#34](#34-buscar-registros-cuyo-campo-empiece-con-un-texto-startswith)                        |
+| Filtrar por el id de la relación (ej. reservas del evento 3)                        | [#35](#35-buscar-por-id-de-una-relación-manytoone-variante-rápida-del-bloque-8)               |
+| Filtrar por el id de una relación muchos a muchos (`QueryBuilder`)                  | [#36](#36-buscar-por-id-de-una-relación-manytomany-con-querybuilder)                          |
+| Varios filtros opcionales en un mismo endpoint (`?nombre=&categoria=`)              | [#37](#37-combinar-varios-filtros-opcionales-en-un-solo-endpoint)                             |
+| Ordenar según lo que pida el cliente (`?sortBy=&order=`)                            | [#38](#38-ordenar-resultados-dinámicamente-orderby-desde-query-params)                        |
+| Buscar un texto en varios campos a la vez (OR)                                      | [#39](#39-buscar-con-or-entre-varios-campos)                                                  |
+| Listar por estado (ej. reservas activas / canceladas de un evento)                  | [#71](#71-listar-los-de-un-registro-filtrando-por-estado-ej-reservas-activas--canceladas)     |
+| Filtros opcionales + buscador en varios campos, juntos                              | [#73](#73-filtros-opcionales-and--buscador-en-varios-campos-or-en-el-mismo-endpoint)          |
+| Ordenar la lista de la relación que traés (ej. el vehículo principal primero)       | [#77](#77-ordenar-la-lista-de-la-relación-que-traés-order-anidado)                            |
+| Filtrar entre dos fechas recibidas por query (`?start=&end=`)                       | [#88](#88-filtrar-entre-dos-fechas-recibidas-por-query-validadas-y-con-el-día-final-incluido) |
+
+### 📊 D. Consultas avanzadas, conteos y paginación
+
+| El problema pide...                                                                   | Bloque                                                                                             |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Contar todos los registros                                                            | [#15](#15-contar-todos-los-registros)                                                              |
+| Traer los últimos N (los más recientes)                                               | [#18](#18-traer-los-n-más-recientes)                                                               |
+| Paginar (`page` y `limit`) con el total                                               | [#19](#19-paginar-resultados-con-total)                                                            |
+| Consultas complejas o reportes (`QueryBuilder`: SUM, COUNT, JOIN manual)              | [#24](#24-consulta-con-querybuilder-cuando-find-no-alcanza)                                        |
+| Varias operaciones que deben ir juntas (transacción: descontar cupos + crear reserva) | [#25](#25-transacción-varias-operaciones-que-deben-ir-juntas-ej-descontar-cupos--crear-la-reserva) |
+| Mostrar un dato calculado (cupos reservados, etiqueta OWNER)                          | [#100](#100-campo-calculado-en-la-respuesta-map-cupos-reservados-etiqueta-owner)                   |
+
+### 🔄 E. Cambios de estado puntuales
+
+| El problema pide...                                                 | Bloque                                                                          |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Activar / desactivar invirtiendo un booleano (toggle)               | [#42](#42-activardesactivar-un-campo-booleano-toggle-sin-tocar-el-resto)        |
+| Borrado lógico: marcar como eliminado sin borrar (soft delete)      | [#65](#65-soft-delete-no-borrar-físicamente-solo-marcar)                        |
+| Solo uno marcado a la vez (principal / predeterminado)              | [#69](#69-solo-uno-marcado-a-la-vez-principal--predeterminado--activo)          |
+| Cambiar el estado (confirmar, instalar…) validando el estado actual | [#70](#70-cambiar-el-estado-confirmar-instalar-validando-el-estado-actual-enum) |
+| Desactivar evento solo si no tiene reservas activas                 | [#83](#83-desactivar-evento-solo-si-no-tiene-reservas-activas-sin-toggle)       |
+| Dar y quitar like / guardar con el mismo endpoint                   | [#95](#95-dar--quitar-con-el-mismo-endpoint-toggle-de-relación-like-guardar)    |
+
+### ⚠️ F. Validación de entrada, errores y respuestas HTTP
+
+| El problema pide...                                                        | Bloque                                                                                           |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Responder errores con el código correcto (404, 409, 400) en vez de 500     | [#26](#26-lanzar-errores-con-excepciones-de-nest-404-409-400-en-vez-de-throw-new-error)          |
+| Validar los datos del body (DTO con `class-validator`)                     | [#27](#27-validaciones-en-el-dto-con-class-validator)                                            |
+| Tabla de excepciones: qué código HTTP usar en cada caso                    | [#33](#33-excepciones-http-estándar-en-nestjs)                                                   |
+| Forzar el código HTTP de respuesta (`@HttpCode`, ej. 201 / 204)            | [#43](#43-httpcode-explícito-en-cada-endpoint)                                                   |
+| Controller con `try/catch` para nunca responder 500 sin mensaje            | [#44](#44-controller-con-trycatch-para-nunca-responder-un-500-sin-mensaje)                       |
+| Validar que el id de la URL sea positivo (pipe propio)                     | [#45](#45-pipe-personalizado-positiveintpipe-en-vez-de-parseintpipe)                             |
+| Excepción propia con el formato del proyecto (ej. `UserNotFoundException`) | [#54](#54-excepción-personalizada-siguiendo-el-estilo-del-proyecto-no-notfoundexception-a-secas) |
+| Ids UUID en la URL (`ParseUUIDPipe`)                                       | [#76](#76-ids-tipo-uuid-en-la-ruta-parseuuidpipe)                                                |
+| Responder con un mensaje breve (`{ message, data }`) sin el `passwordHash` | [#90](#90-responder-con-un-mensaje-breve--message-data--sin-exponer-datos-sensibles)             |
+| Pipes para query/params: valor por defecto, enum, booleano, lista          | [#104](#104-pipes-integrados-de-nest-para-params-y-query-valor-por-defecto-enum-booleano-lista)  |
+
+### 🔐 G. Autenticación y guards base
+
+| El problema pide...                                                     | Bloque                                                                       |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Guardar la contraseña encriptada (`bcrypt`)                             | [#46](#46-hashear-la-contraseña-antes-de-guardar-típico-en-authuser)         |
+| Proteger un endpoint: token (JWT) + permiso (`@Permissions`)            | [#48](#48-proteger-un-endpoint-con-autenticación-jwt--autorización-permisos) |
+| Saber quién hace la petición (`req.user`, `AuthenticatedRequest`)       | [#49](#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest)          |
+| Prefijo en todas las rutas (ej. `api-test/`)                            | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
+| Leer el usuario con `@CurrentUser()` en vez de `@Req()`                 | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
+| Dejar un endpoint público con un guard global (`@Public`)               | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
+| Guards una sola vez sobre el controller + `@Permissions` en cada método | [#101](#101-guards-una-vez-sobre-la-clase--permissions-en-cada-método)       |
+
+### 🛂 H. Autorización avanzada (permisos, roles, ownership)
+
+| El problema pide...                                                   | Bloque                                                                               |
+| --------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Proteger por rol simple (`@Roles('admin')`) — solo si NO hay permisos | [#47](#47-guard--decorador-roles-para-proteger-rutas-según-el-rol-del-usuario)       |
+| Ver un registro solo si es ADMIN o el dueño (403 si no)               | [#55](#55-ver-un-registro-solo-si-es-admin-o-el-dueño-403-si-no)                     |
+| Permisos con "al menos uno" (OR) en vez de "todos"                    | [#61](#61-guard-de-permisos-con-lógica-or-variante-del-permissionsguard-que-usa-and) |
+| Guard que solo deja pasar al dueño del recurso                        | [#62](#62-guard-de-solo-dueño-sin-pasar-por-permisos-ownership-puro)                 |
+| Validar dueño o ADMIN en un método reutilizable                       | [#91](#91-validar-dueño-o-admin-en-un-método-reutilizable-findownedorfail)           |
+
+### 📏 I. Reglas de negocio (fechas, cupos, límites)
+
+| El problema pide...                                                       | Bloque                                                                                              |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Crear con fecha futura e inicializar `availableSpots` con `capacity`      | [#50](#50-crear-con-fecha-futura-e-inicializar-availablespots-con-capacity)                         |
+| El evento no debe haber ocurrido / debe ser dentro de los próximos N días | [#51](#51-validar-que-el-evento-no-haya-ocurrido-y-sea-dentro-de-los-próximos-n-días)               |
+| Descontar cupos al reservar y devolverlos al cancelar                     | [#52](#52-descontar-cupos-al-reservar-y-devolverlos-al-cancelar-no-exceder-availablespots)          |
+| Límite por usuario contando reservas (si cada reserva es de 1 cupo)       | [#53](#53-límite-por-usuario-contando-reservas-activas-si-cada-reserva-es-de-1-cupo)                |
+| Validar fecha futura desde el DTO (decorador propio `@IsFutureDate`)      | [#63](#63-validador-personalizado-reutilizable-isfuturedate)                                        |
+| Confirmar contraseña: dos campos iguales (`@Match`)                       | [#64](#64-validador-match-confirmar-contraseña)                                                     |
+| Regla que depende de dos campos (ej. tracción solo para carros)           | [#72](#72-regla-que-depende-de-dos-campos-ej-tracción-solo-para-carros-en-create-y-update)          |
+| Actualizar evento: fecha futura si se modifica + capacidad ≥ reservados   | [#82](#82-actualizar-evento-fecha-futura-si-se-modifica--capacidad-no-menor-a-los-cupos-reservados) |
+| Límite por usuario: máximo N cupos activos por evento (sumando)           | [#84](#84-límite-por-usuario-sumando-cupos-activos-ej-máximo-5-cupos-por-evento)                    |
+| Actualizar reserva: cambiar la cantidad ajustando los cupos               | [#87](#87-actualizar-reserva-cambiar-la-cantidad-ajustando-los-cupos-del-evento)                    |
+
+### 👤 J. Flujos de usuario y cuenta
+
+| El problema pide...                             | Bloque                                                                   |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| Registro público de usuario con rol por defecto | [#59](#59-registro-público-de-usuario-rol-por-defecto)                   |
+| Cambiar la contraseña validando la actual       | [#60](#60-cambiar-contraseña-validar-la-actual-antes-de-setear-la-nueva) |
+| Guardar automáticamente quién creó el registro  | [#66](#66-auditoría-automática-guardar-quién-creó-un-registro)           |
+
+### 🧩 K. Módulos, entities y trampas de TypeORM
+
+| El problema pide...                                                      | Bloque                                                                                   |
+| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| Usar el service de otro módulo (error "Nest can't resolve dependencies") | [#79](#79-usar-el-service-de-otro-módulo-exports--imports)                               |
+| Trampa: la FK no se guarda al crear (`insert: false`)                    | [#80](#80-trampa-columna-fk--relación-con-el-mismo-nombre-insert-false-rompe-los-insert) |
+| Trampa: ids `bigint` y precios `numeric` llegan como texto               | [#81](#81-trampa-ids-bigint-y-columnas-numeric-que-llegan-como-string)                   |
+| Trampa: comparar fechas (string vs `Date`)                               | [#92](#92-trampa-fechas-date-llega-como-string-timestamp-como-date)                      |
+| Trampa: 403 o 500 en todo lo protegido (`JwtStrategy` sin relaciones)    | [#102](#102-trampa-el-jwtstrategy-no-carga-los-permisos-del-usuario-403-o-500-en-todo)   |
+| Trampa: 401 en todo lo protegido (clave del token vs Postman)            | [#103](#103-trampa-la-clave-del-token-del-login-no-coincide-con-postman-401-en-todo)     |
+
+### 🧪 L. Recetas armadas (flujos completos, ya combinados)
+
+| El problema pide...                                                           | Bloque                                                                                               |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Crear reserva completa (existe, activo, no ocurrió, cupos, límite, descontar) | [#85](#85-crear-reserva-completa-evento-existe-activo-no-ocurrió-cupos-límite-y-descontar)           |
+| Cancelar reserva completa (dueño, no cancelada, no ocurrió, liberar cupos)    | [#86](#86-cancelar-reserva-completa-dueño-no-cancelada-evento-no-ocurrido-liberar-cupos-y-cancelled) |
+| Comprar el carrito (pedido + items + vaciar carrito)                          | [#97](#97-receta-armada-comprar-el-carrito-pedido--items-en-una-transacción)                         |
+
+### 🔬 M. Testing
+
+| El problema pide...                                | Bloque                                                               |
+| -------------------------------------------------- | -------------------------------------------------------------------- |
+| Test unitario de un service (repositorio mockeado) | [#105](#105-test-unitario-de-un-service-con-el-repositorio-mockeado) |
+
+---
+
 > **Cómo usar este recetario:** en vez de nombres reales (Producto, Cliente,
 > Categoría...) el código usa nombres placeholder en INGLÉS, consistentes en
 > TODOS los bloques. Para adaptar un bloque a tu proyecto, hacés "buscar y
@@ -5030,181 +5210,3 @@ const module: TestingModule = await Test.createTestingModule({
 > controller los guards no se ejecutan; en un test e2e (app completa con
 > `supertest`) se pueden anular con
 > `.overrideGuard(AuthGuard('jwt')).useValue({ canActivate: () => true })`.
-
----
-
-## Tabla resumen — ¿qué bloque uso según lo que me piden?
-
-Para no tener que escanear una lista de 105 filas, está agrupada por tipo de problema. Buscá primero la categoría que se parece a lo que te piden, y ahí el bloque puntual.
-
-> 🧭 Si ya sabés QUÉ bloques necesitás pero no cómo juntarlos, volvé a la guía "Cómo combinar los bloques" del principio (orden de las piezas + ejemplo del pre-parcial armado).
-
-### 🧱 A. CRUD básico (crear, leer, actualizar, eliminar)
-
-| El problema pide...                                             | Bloque                                                                                      |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Crear entidad simple (sin relación)                             | [#1](#1-crear-un-registro-simple-sin-relaciones)                                            |
-| Crear entidad que depende de OTRA (1 relación)                  | [#2](#2-crear-un-registro-que-pertenece-a-otra-entidad-buscar-el-relacionado-por-id--404)   |
-| Crear tabla intermedia (2 relaciones)                           | [#3](#3-crear-un-registro-que-une-dos-entidades-tabla-intermedia-inscripción-rol-permiso)   |
-| Evitar asociación duplicada                                     | [#4](#4-crear-sin-repetir-la-misma-combinación-ej-no-inscribirse-dos-veces-al-mismo-curso)  |
-| Buscar uno por id                                               | [#7](#7-buscar-uno-por-id)                                                                  |
-| Actualizar campos simples                                       | [#10](#10-actualizar-campos-simples-sin-tocar-relaciones)                                   |
-| Actualizar cambiando 1 relación                                 | [#11](#11-actualizar-cambiando-a-qué-registro-pertenece-reasignar-una-relación)             |
-| Actualizar cambiando 2 relaciones                               | [#12](#12-actualizar-reasignando-dos-relaciones-tabla-intermedia)                           |
-| Eliminar simple                                                 | [#13](#13-eliminar-por-id-simple-cualquier-entidad)                                         |
-| Eliminar con validación de dependencias                         | [#14](#14-eliminar-solo-si-no-tiene-registros-asociados-ej-evento-con-reservas--409)        |
-| Evitar valores duplicados en un campo único al crear            | [#17](#17-verificar-si-ya-existe-antes-de-crear-evitar-duplicados-por-campo-único)          |
-| Evitar valores duplicados en un campo único al ACTUALIZAR       | [#67](#67-validar-un-campo-único-también-al-actualizar-no-solo-al-crear)                    |
-| Crear el relacionado automáticamente si no existe               | [#68](#68-buscar-o-crear-el-relacionado-si-no-existe-se-crea-solo)                          |
-| Crear copiando datos de otra entidad                            | [#74](#74-crear-un-registro-copiando-datos-de-otra-entidad-con-estado-por-defecto)          |
-| Que el update NO deje cambiar ciertos campos                    | [#75](#75-updatedto-que-no-deja-cambiar-ciertos-campos-omittype)                            |
-| Eliminar en cascada (borrar hijos junto con el padre)           | [#78](#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)                              |
-| Eliminar validando existencia y respondiendo un mensaje         | [#89](#89-eliminar-evento-o-reserva-validar-que-exista-sin-500-por-fk-y-con-mensaje-propio) |
-| Si ya existe, sumar en vez de duplicar (carrito)                | [#96](#96-si-ya-existe-sumar-en-vez-de-duplicar-agregar-al-carrito)                         |
-| Al crear un registro, crear otro automáticamente (notificación) | [#99](#99-efecto-secundario-al-crear-un-registro-crear-otro-automáticamente-notificación)   |
-
-### 🔗 B. Relaciones especiales (`OneToOne` / `ManyToMany`)
-
-| El problema pide...                                    | Bloque                                                                                      |
-| ------------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| Relación uno a uno (`@OneToOne`)                       | [#20](#20-relación-onetoone-uno-a-uno)                                                      |
-| Relación muchos a muchos directa (`@ManyToMany`)       | [#21](#21-relación-manytomany-directa-sin-service-de-tabla-intermedia)                      |
-| Quitar un elemento de una `ManyToMany`                 | [#40](#40-quitar-un-elemento-de-una-relación-manytomany)                                    |
-| Reemplazar todos los relacionados de una `ManyToMany`  | [#41](#41-reemplazar-todos-los-relacionados-de-una-manytomany-de-una-sola-vez)              |
-| Relación opcional (`nullable`): asociar / desasociar   | [#93](#93-relación-opcional-nullable-asociar-reasignar-o-desasociar)                        |
-| Dos relaciones a la MISMA entidad (seguir usuarios)    | [#94](#94-dos-relaciones-a-la-misma-entidad-seguir-usuarios-no-a-sí-mismo-y-sin-duplicados) |
-| Relación con la misma tabla (respuestas a comentarios) | [#98](#98-relación-con-la-misma-tabla-respuestas-a-comentarios-parent--replies)             |
-
-### 🔍 C. Búsquedas y filtros
-
-| El problema pide...                                        | Bloque                                                                                        |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Listar todo con su relación                                | [#5](#5-buscar-todos-trayendo-la-relación-join)                                               |
-| Listar con relación anidada (2 niveles)                    | [#6](#6-buscar-todos-trayendo-dos-niveles-de-relación-anidados)                               |
-| Filtrar por campo de la relación                           | [#8](#8-buscar-filtrando-por-un-campo-de-la-relación-no-propio)                               |
-| Búsqueda parcial de texto (`Like`)                         | [#9](#9-buscar-por-texto-parcial-like--contiene)                                              |
-| Contar filtrando por relación                              | [#16](#16-contar-filtrando-por-relación)                                                      |
-| Filtrar por mayor/menor que, o rango de fechas             | [#22](#22-filtrar-con-operadores-de-comparación-morethan-lessthan-between)                    |
-| Filtrar por una lista de ids (`In`)                        | [#23](#23-filtrar-por-una-lista-de-ids-in)                                                    |
-| Buscar texto ignorando mayúsculas/minúsculas (`ILike`)     | [#28](#28-buscar-por-texto-parcial-ignorando-mayúsculas-y-minúsculas-ilike)                   |
-| Filtrar por mayor o igual que (`MoreThanOrEqual`)          | [#29](#29-filtrar-por-valores-mayores-o-iguales-morethanorequal)                              |
-| Filtrar por menor o igual que (`LessThanOrEqual`)          | [#30](#30-filtrar-por-valores-menores-o-iguales-lessthanorequal)                              |
-| Buscar valores NULL (`IsNull`)                             | [#31](#31-buscar-registros-donde-un-campo-sea-null-isnull)                                    |
-| Negar una condición (`Not`)                                | [#32](#32-negar-una-condición-not)                                                            |
-| Buscar texto que EMPIECE con algo (`StartsWith`)           | [#34](#34-buscar-registros-cuyo-campo-empiece-con-un-texto-startswith)                        |
-| Buscar por id de una relación `ManyToOne`                  | [#35](#35-buscar-por-id-de-una-relación-manytoone-variante-rápida-del-bloque-8)               |
-| Buscar por id de una relación `ManyToMany`                 | [#36](#36-buscar-por-id-de-una-relación-manytomany-con-querybuilder)                          |
-| Combinar varios filtros opcionales en un solo endpoint     | [#37](#37-combinar-varios-filtros-opcionales-en-un-solo-endpoint)                             |
-| Ordenar dinámicamente por query param                      | [#38](#38-ordenar-resultados-dinámicamente-orderby-desde-query-params)                        |
-| Buscar con OR entre varios campos                          | [#39](#39-buscar-con-or-entre-varios-campos)                                                  |
-| Listar por relación + estado (varios endpoints, un método) | [#71](#71-listar-los-de-un-registro-filtrando-por-estado-ej-reservas-activas--canceladas)     |
-| Filtros opcionales + buscador OR en el mismo endpoint      | [#73](#73-filtros-opcionales-and--buscador-en-varios-campos-or-en-el-mismo-endpoint)          |
-| Ordenar la lista de la relación que traés                  | [#77](#77-ordenar-la-lista-de-la-relación-que-traés-order-anidado)                            |
-| Filtrar entre dos fechas del query, validadas              | [#88](#88-filtrar-entre-dos-fechas-recibidas-por-query-validadas-y-con-el-día-final-incluido) |
-
-### 📊 D. Consultas avanzadas, conteos y paginación
-
-| El problema pide...                                       | Bloque                                                                                             |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Contar todos                                              | [#15](#15-contar-todos-los-registros)                                                              |
-| Traer los últimos N                                       | [#18](#18-traer-los-n-más-recientes)                                                               |
-| Paginación                                                | [#19](#19-paginar-resultados-con-total)                                                            |
-| Consulta compleja / agregaciones (QueryBuilder)           | [#24](#24-consulta-con-querybuilder-cuando-find-no-alcanza)                                        |
-| Varias operaciones que deben ocurrir juntas (transacción) | [#25](#25-transacción-varias-operaciones-que-deben-ir-juntas-ej-descontar-cupos--crear-la-reserva) |
-| Campo calculado en la respuesta (cupos reservados, OWNER) | [#100](#100-campo-calculado-en-la-respuesta-map-cupos-reservados-etiqueta-owner)                   |
-
-### 🔄 E. Cambios de estado puntuales
-
-| El problema pide...                                                     | Bloque                                                                          |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Activar/desactivar un campo booleano (toggle)                           | [#42](#42-activardesactivar-un-campo-booleano-toggle-sin-tocar-el-resto)        |
-| Soft delete (no borrar físicamente)                                     | [#65](#65-soft-delete-no-borrar-físicamente-solo-marcar)                        |
-| Solo uno marcado a la vez (principal / predeterminado)                  | [#69](#69-solo-uno-marcado-a-la-vez-principal--predeterminado--activo)          |
-| Cambiar un estado `enum` con transición validada                        | [#70](#70-cambiar-el-estado-confirmar-instalar-validando-el-estado-actual-enum) |
-| Desactivar de una sola vía (no toggle) si no tiene dependientes activos | [#83](#83-desactivar-evento-solo-si-no-tiene-reservas-activas-sin-toggle)       |
-| Dar / quitar con el mismo endpoint (like, guardar)                      | [#95](#95-dar--quitar-con-el-mismo-endpoint-toggle-de-relación-like-guardar)    |
-
-### ⚠️ F. Validación de entrada, errores y respuestas HTTP
-
-| El problema pide...                                                 | Bloque                                                                                           |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Que los errores devuelvan el código HTTP correcto                   | [#26](#26-lanzar-errores-con-excepciones-de-nest-404-409-400-en-vez-de-throw-new-error)          |
-| Validar el formato de los datos que llegan (DTO)                    | [#27](#27-validaciones-en-el-dto-con-class-validator)                                            |
-| Manejar excepciones HTTP estándar (tabla de códigos)                | [#33](#33-excepciones-http-estándar-en-nestjs)                                                   |
-| Forzar el código HTTP de respuesta (`@HttpCode`)                    | [#43](#43-httpcode-explícito-en-cada-endpoint)                                                   |
-| Controller defensivo con try/catch (combinable con 43)              | [#44](#44-controller-con-trycatch-para-nunca-responder-un-500-sin-mensaje)                       |
-| Pipe personalizado para validar id positivo                         | [#45](#45-pipe-personalizado-positiveintpipe-en-vez-de-parseintpipe)                             |
-| Excepción personalizada con el formato del proyecto                 | [#54](#54-excepción-personalizada-siguiendo-el-estilo-del-proyecto-no-notfoundexception-a-secas) |
-| Validar ids UUID en la ruta (`ParseUUIDPipe`)                       | [#76](#76-ids-tipo-uuid-en-la-ruta-parseuuidpipe)                                                |
-| Responder con un mensaje breve sin exponer datos sensibles          | [#90](#90-responder-con-un-mensaje-breve--message-data--sin-exponer-datos-sensibles)             |
-| Pipes integrados: valor por defecto, enum, booleano, decimal, lista | [#104](#104-pipes-integrados-de-nest-para-params-y-query-valor-por-defecto-enum-booleano-lista)  |
-
-### 🔐 G. Autenticación y guards base
-
-| El problema pide...                                               | Bloque                                                                       |
-| ----------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Hashear contraseña antes de guardar (`bcrypt`)                    | [#46](#46-hashear-la-contraseña-antes-de-guardar-típico-en-authuser)         |
-| Proteger endpoint con JWT + permisos (`@Permissions`)             | [#48](#48-proteger-un-endpoint-con-autenticación-jwt--autorización-permisos) |
-| Leer el usuario autenticado (`AuthenticatedRequest` / `req.user`) | [#49](#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest)          |
-| Prefijo de ruta obligatorio por controlador                       | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
-| Decorador `@CurrentUser()` para no repetir `@Req()`               | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
-| Decorador `@Public()` para excluir un endpoint de un guard global | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
-| Guards una sola vez sobre la clase + `@Permissions` por método    | [#101](#101-guards-una-vez-sobre-la-clase--permissions-en-cada-método)       |
-
-### 🛂 H. Autorización avanzada (permisos, roles, ownership)
-
-| El problema pide...                                           | Bloque                                                                               |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Proteger una ruta según el rol del usuario (Guard + `@Roles`) | [#47](#47-guard--decorador-roles-para-proteger-rutas-según-el-rol-del-usuario)       |
-| Autorización mixta: ADMIN o dueño del recurso                 | [#55](#55-ver-un-registro-solo-si-es-admin-o-el-dueño-403-si-no)                     |
-| Guard de permisos con lógica OR (al menos uno)                | [#61](#61-guard-de-permisos-con-lógica-or-variante-del-permissionsguard-que-usa-and) |
-| Guard de "solo dueño" sin pasar por permisos                  | [#62](#62-guard-de-solo-dueño-sin-pasar-por-permisos-ownership-puro)                 |
-| Buscar + validar dueño (o admin) en un método reutilizable    | [#91](#91-validar-dueño-o-admin-en-un-método-reutilizable-findownedorfail)           |
-
-### 📏 I. Reglas de negocio (fechas, cupos, límites)
-
-| El problema pide...                                           | Bloque                                                                                              |
-| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Validar que una fecha sea futura                              | [#50](#50-crear-con-fecha-futura-e-inicializar-availablespots-con-capacity)                         |
-| Validar que algo ocurra dentro de una ventana de N días       | [#51](#51-validar-que-el-evento-no-haya-ocurrido-y-sea-dentro-de-los-próximos-n-días)               |
-| Descontar/reponer cupos con validación de capacidad           | [#52](#52-descontar-cupos-al-reservar-y-devolverlos-al-cancelar-no-exceder-availablespots)          |
-| Limitar cantidad de recursos activos por usuario              | [#53](#53-límite-por-usuario-contando-reservas-activas-si-cada-reserva-es-de-1-cupo)                |
-| Validador personalizado `@IsFutureDate`                       | [#63](#63-validador-personalizado-reutilizable-isfuturedate)                                        |
-| Validador personalizado `@Match` (confirmar contraseña)       | [#64](#64-validador-match-confirmar-contraseña)                                                     |
-| Regla que depende de DOS campos (create y update)             | [#72](#72-regla-que-depende-de-dos-campos-ej-tracción-solo-para-carros-en-create-y-update)          |
-| Update con capacidad ≥ reservados (recalcular cupos)          | [#82](#82-actualizar-evento-fecha-futura-si-se-modifica--capacidad-no-menor-a-los-cupos-reservados) |
-| Límite por usuario SUMANDO cantidades (no contando filas)     | [#84](#84-límite-por-usuario-sumando-cupos-activos-ej-máximo-5-cupos-por-evento)                    |
-| Update que cambia una cantidad (ajustar cupos por diferencia) | [#87](#87-actualizar-reserva-cambiar-la-cantidad-ajustando-los-cupos-del-evento)                    |
-
-### 👤 J. Flujos de usuario y cuenta
-
-| El problema pide...                             | Bloque                                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| Registro público de usuario con rol por defecto | [#59](#59-registro-público-de-usuario-rol-por-defecto)                   |
-| Cambiar contraseña validando la actual          | [#60](#60-cambiar-contraseña-validar-la-actual-antes-de-setear-la-nueva) |
-| Auditoría: guardar quién creó un registro       | [#66](#66-auditoría-automática-guardar-quién-creó-un-registro)           |
-
-### 🧩 K. Módulos, entities y trampas de TypeORM
-
-| El problema pide...                                                     | Bloque                                                                                   |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Usar el service de otro módulo (`exports` / `imports`)                  | [#79](#79-usar-el-service-de-otro-módulo-exports--imports)                               |
-| La FK no se guarda al crear (columna FK + relación con el mismo nombre) | [#80](#80-trampa-columna-fk--relación-con-el-mismo-nombre-insert-false-rompe-los-insert) |
-| Ids `bigint` / columnas `numeric` que llegan como `string`              | [#81](#81-trampa-ids-bigint-y-columnas-numeric-que-llegan-como-string)                   |
-| Comparar fechas (`date` string vs `timestamp` Date)                     | [#92](#92-trampa-fechas-date-llega-como-string-timestamp-como-date)                      |
-| 403 o 500 en todo lo protegido (`JwtStrategy` sin relaciones)           | [#102](#102-trampa-el-jwtstrategy-no-carga-los-permisos-del-usuario-403-o-500-en-todo)   |
-| 401 en todo lo protegido (clave del token vs Postman)                   | [#103](#103-trampa-la-clave-del-token-del-login-no-coincide-con-postman-401-en-todo)     |
-
-### 🧪 L. Recetas armadas (flujos completos, ya combinados)
-
-| El problema pide...                                                                       | Bloque                                                                                               |
-| ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Crear una reserva con todas sus reglas (existe, activo, fechas, cupos, límite, descontar) | [#85](#85-crear-reserva-completa-evento-existe-activo-no-ocurrió-cupos-límite-y-descontar)           |
-| Cancelar una reserva con todas sus reglas (dueño, estado, fecha, liberar cupos)           | [#86](#86-cancelar-reserva-completa-dueño-no-cancelada-evento-no-ocurrido-liberar-cupos-y-cancelled) |
-| Comprar el carrito (pedido + items + vaciar carrito)                                      | [#97](#97-receta-armada-comprar-el-carrito-pedido--items-en-una-transacción)                         |
-
-### 🔬 M. Testing
-
-| El problema pide...                                                 | Bloque                                                               |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Test unitario de un service (repositorio mockeado) y del controller | [#105](#105-test-unitario-de-un-service-con-el-repositorio-mockeado) |
