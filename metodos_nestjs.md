@@ -122,6 +122,7 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | Saber quién hace la petición (`req.user`, `AuthenticatedRequest`)         | [#49](#49-tipar-y-usar-el-usuario-autenticado-authenticatedrequest)          |
 | ¿De dónde sale `req.user`? (recorrido token → guard → controller)         | [#49.1](#491-de-dónde-sale-requser-el-recorrido)                             |
 | ¿Este endpoint lleva `req.user` o solo guards? (proteger ≠ saber quién)   | [#49.2](#492-proteger--saber-quién-en-qué-endpoints-va-requser)              |
+| ¿Qué frases del enunciado piden `req.user`? (cualquier dominio)           | [#49.3](#493-cuándo-va-requser-en-cualquier-parcial-frases-que-lo-piden)     |
 | Prefijo en todas las rutas (ej. `api-test/`)                              | [#56](#56-prefijo-de-ruta-obligatorio-por-controlador-api-test)              |
 | Leer el usuario con `@CurrentUser()` en vez de `@Req()`                   | [#57](#57-currentuser--decorador-propio-en-vez-de-tipar-req-a-mano)          |
 | Dejar un endpoint público con un guard global (`@Public`)                 | [#58](#58-public--excluir-un-endpoint-de-un-guard-global)                    |
@@ -168,8 +169,8 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 | Trampa: la FK no se guarda al crear (`insert: false`)                    | [#80](#80-trampa-columna-fk--relación-con-el-mismo-nombre-insert-false-rompe-los-insert) |
 | Trampa: ids `bigint` y precios `numeric` llegan como texto               | [#81](#81-trampa-ids-bigint-y-columnas-numeric-que-llegan-como-string)                   |
 | Trampa: comparar fechas (string vs `Date`)                               | [#92](#92-trampa-fechas-date-llega-como-string-timestamp-como-date)                      |
-| Error TS2345 al pasar `req.user` al service (`user?: User`)              | [#49.3](#493-trampa-el--de-user-user-error-ts2345)                                       |
-| Error TS1272 al importar `AuthenticatedRequest` desde otro archivo       | [#49.4](#494-trampa-la-interfaz-en-otro-archivo-error-ts1272)                            |
+| Error TS2345 al pasar `req.user` al service (`user?: User`)              | [#49.4](#494-trampa-el--de-user-user-error-ts2345)                                       |
+| Error TS1272 al importar `AuthenticatedRequest` desde otro archivo       | [#49.5](#495-trampa-la-interfaz-en-otro-archivo-error-ts1272)                            |
 | Trampa: 403 o 500 en todo lo protegido (`JwtStrategy` sin relaciones)    | [#102](#102-trampa-el-jwtstrategy-no-carga-los-permisos-del-usuario-403-o-500-en-todo)   |
 | Trampa: 401 en todo lo protegido (clave del token vs Postman)            | [#103](#103-trampa-la-clave-del-token-del-login-no-coincide-con-postman-401-en-todo)     |
 
@@ -2559,7 +2560,43 @@ para cumplir la regla?"_
 > eventos. Si la declarás donde nadie la usa, VS Code avisa _"is declared
 > but never used"_.
 
-#### 49.3 Trampa: el `?` de `user?: User` (error TS2345)
+#### 49.3 ¿Cuándo va `req.user` en CUALQUIER parcial? (frases que lo piden)
+
+El enunciado casi nunca dice _"usá `req`"_: lo dice con otras palabras.
+Pregunta para decidir: **_"¿mi service necesita saber QUIÉN es para cumplir
+esta regla?"_** Si sí → `req.user`.
+
+**Frases que piden `req.user`:**
+
+| Si el enunciado dice...                                                                         | Para qué necesitás al usuario                                                |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| _"...a través del token"_ / _"mis X"_ / _"retorna únicamente los del usuario autenticado"_      | Filtrar los registros **de él** (`where: { owner: { id: currentUser.id } }`) |
+| _"crear X"_ donde X queda **a nombre de alguien** (reserva, pedido, publicación, comentario)    | Guardar el dueño: sale del token, **nunca del body** (bloque 66)             |
+| _"debe pertenecer al usuario autenticado"_ / _"solo el dueño puede editar / borrar / cancelar"_ | Comparar `registro.owner.id` con `currentUser.id` → 403 si no (bloque 62)    |
+| _"recurso para ADMIN o propietario"_                                                            | Revisar el rol y si es el dueño (bloques 55 y 91)                            |
+| _"límite por usuario"_ / _"máximo N por usuario"_ / _"un usuario no puede X dos veces"_         | Contar o buscar **sus** registros, no los de todos (bloques 4 y 84)          |
+| _"no puede seguirse / calificarse / reservarse a sí mismo"_                                     | Comparar el id del otro con `currentUser.id` (bloque 94)                     |
+| _"registrar quién lo creó"_ / _"guardar el autor"_                                              | Guardar `createdBy: currentUser` (bloque 66)                                 |
+| _"cambiar MI contraseña"_ / _"ver MI perfil"_                                                   | Saber cuál usuario modificar o mostrar (bloque 60)                           |
+
+**Frases que NO piden `req.user`** (con el guard + permiso alcanza):
+
+| Si el enunciado dice...                                                                       | Por qué no                                                       |
+| --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| _"solo los administradores pueden..."_ / _"limitado según los permisos"_                      | Lo resuelve el `PermissionsGuard` con `@Permissions` (bloque 48) |
+| _"la fecha debe ser futura"_ / _"no exceder los cupos"_ / _"el precio no puede ser negativo"_ | Son reglas sobre los DATOS, no sobre quién los manda             |
+| _"obtener todos los X"_ (sin "mis") / _"obtener X por id"_ (sin "propietario")                | Cualquiera con el permiso puede verlos                           |
+
+**Ejemplos en otros dominios:**
+
+| Dominio    | Llevan `req.user`                                                                            | NO llevan `req.user`                                              |
+| ---------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Tienda     | Crear pedido, ver "mis pedidos", agregar a "mi carrito", cancelar un pedido propio           | Crear / editar productos (solo admin → permiso), listar productos |
+| Biblioteca | Pedir un préstamo, "mis préstamos", devolver (debe ser suyo), máximo N préstamos por usuario | Crear libros, listar libros, ver un libro                         |
+| Red social | Publicar, borrar solo SU publicación, dar like, seguir (no a sí mismo), "mi feed"            | Listar publicaciones públicas, ver una publicación                |
+| Cursos     | Inscribirse, "mis cursos", retirarse (debe ser suya la inscripción)                          | Crear cursos (admin), listar cursos                               |
+
+#### 49.4 Trampa: el `?` de `user?: User` (error TS2345)
 
 Si el enunciado te da la interfaz con el usuario **opcional**:
 
@@ -2591,7 +2628,7 @@ async create(createReservationDto: CreateReservationDto, currentUser?: User) {
 > código de arriba de este bloque), el problema no aparece. Si el
 > enunciado da el "ejemplo esperado" con `?`, respetalo y usá la opción A.
 
-#### 49.4 Trampa: la interfaz en OTRO archivo (error TS1272)
+#### 49.5 Trampa: la interfaz en OTRO archivo (error TS1272)
 
 Si `AuthenticatedRequest` está en otro archivo (ej.
 `interfaces/authenticated-request.interface.ts`), con el `tsconfig` del
