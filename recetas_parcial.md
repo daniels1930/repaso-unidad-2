@@ -292,7 +292,7 @@ import { Request } from 'express';
 import { User } from '../../auth/entities/user.entity';
 
 export interface AuthenticatedRequest extends Request {
-    user: User; // lo carga AuthGuard('jwt') con lo que devuelve JwtStrategy.validate()
+    user?: User; // así la da el profe → en el controller usá req.user!
 }
 ```
 
@@ -519,7 +519,7 @@ export class BookingController {
     @Post()
     @Permissions('create_bookings')
     create(@Body() createBookingDto: CreateBookingDto, @Req() req: AuthenticatedRequest) {
-        return this.bookingService.create(createBookingDto, req.user);
+        return this.bookingService.create(createBookingDto, req.user!);
     }
 
     @Get()
@@ -532,7 +532,7 @@ export class BookingController {
     @Get('me') // o 'user', como diga el enunciado
     @Permissions('read_own_bookings')
     findMine(@Req() req: AuthenticatedRequest, @Query('status') status?: BookingStatus) {
-        return this.bookingService.findMine(req.user, status);
+        return this.bookingService.findMine(req.user!, status);
     }
 
     @Get('between-dates')
@@ -544,13 +544,13 @@ export class BookingController {
     @Get(':id')
     @Permissions('read_bookings')
     findOne(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
-        return this.bookingService.findOne(id, req.user);
+        return this.bookingService.findOne(id, req.user!);
     }
 
     @Patch(':id/cancel')
     @Permissions('cancel_bookings')
     cancel(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
-        return this.bookingService.cancel(id, req.user);
+        return this.bookingService.cancel(id, req.user!);
     }
 
     @Patch(':id')
@@ -560,7 +560,7 @@ export class BookingController {
         @Body() updateBookingDto: UpdateBookingDto,
         @Req() req: AuthenticatedRequest,
     ) {
-        return this.bookingService.update(id, updateBookingDto, req.user);
+        return this.bookingService.update(id, updateBookingDto, req.user!);
     }
 
     @Delete(':id')

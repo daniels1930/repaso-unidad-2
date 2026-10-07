@@ -14,28 +14,28 @@ Para no tener que escanear una lista de 105 filas, está agrupada por tipo de pr
 
 ### 🧱 A. CRUD básico (crear, leer, actualizar, eliminar)
 
-| El problema pide...                                                                      | Bloque                                                                                      |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Crear algo simple, sin relaciones (ej. una categoría)                                    | [#1](#1-crear-un-registro-simple-sin-relaciones)                                            |
-| Crear algo que pertenece a otro registro (ej. reserva de un evento: buscar por id + 404) | [#2](#2-crear-un-registro-que-pertenece-a-otra-entidad-buscar-el-relacionado-por-id--404)   |
-| Crear un registro que une dos entidades (tabla intermedia: inscripción, rol-permiso)     | [#3](#3-crear-un-registro-que-une-dos-entidades-tabla-intermedia-inscripción-rol-permiso)   |
-| Crear sin repetir la misma combinación (ej. no inscribirse dos veces) → 409              | [#4](#4-crear-sin-repetir-la-misma-combinación-ej-no-inscribirse-dos-veces-al-mismo-curso)  |
-| Listar todos (`GET /recurso`), con o sin su relación                                     | [#5](#5-buscar-todos-trayendo-la-relación-join)                                             |
-| Ver uno por id (`GET /recurso/:id`)                                                      | [#7](#7-buscar-uno-por-id)                                                                  |
-| Actualizar campos simples (`PATCH /:id`) sin reglas                                      | [#10](#10-actualizar-campos-simples-sin-tocar-relaciones)                                   |
-| Actualizar cambiando a qué registro pertenece (reasignar una relación)                   | [#11](#11-actualizar-cambiando-a-qué-registro-pertenece-reasignar-una-relación)             |
-| Actualizar cambiando DOS relaciones (tabla intermedia)                                   | [#12](#12-actualizar-reasignando-dos-relaciones-tabla-intermedia)                           |
-| Eliminar por id (`DELETE /:id`), simple                                                  | [#13](#13-eliminar-por-id-simple-cualquier-entidad)                                         |
-| Eliminar solo si no tiene registros asociados (ej. evento con reservas → 409)            | [#14](#14-eliminar-solo-si-no-tiene-registros-asociados-ej-evento-con-reservas--409)        |
-| No permitir duplicados de un campo único al CREAR (ej. email, nombre) → 409              | [#17](#17-verificar-si-ya-existe-antes-de-crear-evitar-duplicados-por-campo-único)          |
-| No permitir duplicados de un campo único al ACTUALIZAR                                   | [#67](#67-validar-un-campo-único-también-al-actualizar-no-solo-al-crear)                    |
-| Crear el relacionado automáticamente si no existe (buscar-o-crear)                       | [#68](#68-buscar-o-crear-el-relacionado-si-no-existe-se-crea-solo)                          |
-| Crear copiando datos de otra entidad (ej. el precio del producto)                        | [#74](#74-crear-un-registro-copiando-datos-de-otra-entidad-con-estado-por-defecto)          |
-| Que el update NO deje cambiar ciertos campos (`OmitType`)                                | [#75](#75-updatedto-que-no-deja-cambiar-ciertos-campos-omittype)                            |
-| Borrar en cascada (al borrar el padre se borran los hijos)                               | [#78](#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)                              |
-| Eliminar evento o reserva: validar que exista + mensaje, sin 500                         | [#89](#89-eliminar-evento-o-reserva-validar-que-exista-sin-500-por-fk-y-con-mensaje-propio) |
-| Agregar al carrito: si ya está, sumar la cantidad                                        | [#96](#96-si-ya-existe-sumar-en-vez-de-duplicar-agregar-al-carrito)                         |
-| Al crear algo, crear otro automáticamente (notificación)                                 | [#99](#99-efecto-secundario-al-crear-un-registro-crear-otro-automáticamente-notificación)   |
+| El problema pide...                                                                      | Bloque                                                                                        |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Crear algo simple, sin relaciones (ej. una categoría)                                    | [#1](#1-crear-un-registro-simple-sin-relaciones)                                              |
+| Crear algo que pertenece a otro registro (ej. reserva de un evento: buscar por id + 404) | [#2](#2-crear-un-registro-que-pertenece-a-otra-entidad-buscar-el-relacionado-por-id--404)     |
+| Crear un registro que une dos entidades (tabla intermedia: inscripción, rol-permiso)     | [#3](#3-crear-un-registro-que-une-dos-entidades-tabla-intermedia-inscripción-rol-permiso)     |
+| Crear sin repetir la misma combinación (ej. no inscribirse dos veces) → 409              | [#4](#4-crear-sin-repetir-la-misma-combinación-ej-no-inscribirse-dos-veces-al-mismo-curso)    |
+| Listar todos (`GET /recurso`), con o sin su relación                                     | [#5](#5-buscar-todos-trayendo-la-relación-join)                                               |
+| Ver uno por id (`GET /recurso/:id`) con relación + 404 · si es "ADMIN o dueño" → #55     | [#7](#7-buscar-uno-por-id) · [#55](#55-ver-un-registro-solo-si-es-admin-o-el-dueño-403-si-no) |
+| Actualizar campos simples (`PATCH /:id`) sin reglas                                      | [#10](#10-actualizar-campos-simples-sin-tocar-relaciones)                                     |
+| Actualizar cambiando a qué registro pertenece (reasignar una relación)                   | [#11](#11-actualizar-cambiando-a-qué-registro-pertenece-reasignar-una-relación)               |
+| Actualizar cambiando DOS relaciones (tabla intermedia)                                   | [#12](#12-actualizar-reasignando-dos-relaciones-tabla-intermedia)                             |
+| Eliminar por id (`DELETE /:id`), simple                                                  | [#13](#13-eliminar-por-id-simple-cualquier-entidad)                                           |
+| Eliminar solo si no tiene registros asociados (ej. evento con reservas → 409)            | [#14](#14-eliminar-solo-si-no-tiene-registros-asociados-ej-evento-con-reservas--409)          |
+| No permitir duplicados de un campo único al CREAR (ej. email, nombre) → 409              | [#17](#17-verificar-si-ya-existe-antes-de-crear-evitar-duplicados-por-campo-único)            |
+| No permitir duplicados de un campo único al ACTUALIZAR                                   | [#67](#67-validar-un-campo-único-también-al-actualizar-no-solo-al-crear)                      |
+| Crear el relacionado automáticamente si no existe (buscar-o-crear)                       | [#68](#68-buscar-o-crear-el-relacionado-si-no-existe-se-crea-solo)                            |
+| Crear copiando datos de otra entidad (ej. el precio del producto)                        | [#74](#74-crear-un-registro-copiando-datos-de-otra-entidad-con-estado-por-defecto)            |
+| Que el update NO deje cambiar ciertos campos (`OmitType`)                                | [#75](#75-updatedto-que-no-deja-cambiar-ciertos-campos-omittype)                              |
+| Borrar en cascada (al borrar el padre se borran los hijos)                               | [#78](#78-borrado-en-cascada-desde-la-entity-ondelete-cascade)                                |
+| Eliminar evento o reserva: validar que exista + mensaje, sin 500                         | [#89](#89-eliminar-evento-o-reserva-validar-que-exista-sin-500-por-fk-y-con-mensaje-propio)   |
+| Agregar al carrito: si ya está, sumar la cantidad                                        | [#96](#96-si-ya-existe-sumar-en-vez-de-duplicar-agregar-al-carrito)                           |
+| Al crear algo, crear otro automáticamente (notificación)                                 | [#99](#99-efecto-secundario-al-crear-un-registro-crear-otro-automáticamente-notificación)     |
 
 ### 🔗 B. Relaciones especiales (`OneToOne` / `ManyToMany`)
 
@@ -434,7 +434,7 @@ if (reservation.user.id !== currentUser.id) {
 @Get(':id')
 @HttpCode(HttpStatus.OK)
 findOne(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
-    return this.reservationService.findOne(id, req.user); // req.user ES el "currentUser"
+    return this.reservationService.findOne(id, req.user!); // req.user ES el "currentUser"
 }
 ```
 
@@ -813,23 +813,32 @@ findAll() {
 
 ### 7. Buscar uno por id
 
-> 🎯 **Úsalo en el examen cuando...:** El clásico `GET /:id` — aparece en CASI todos los exámenes, para cualquier entidad.
-> 🧩 **Cómo se combina:** Esqueleto de lectura por id. Si además tenés que validar algo (ej. que el registro sea del usuario), ese `if` va DESPUÉS de comprobar que existe.
-> ⚠️ **Así como está, si el id no existe responde 200 con el body vacío.** Para que dé 404 usá la versión del **bloque 26**, que es la que conviene reutilizar en `update` / `remove`.
-
-El clásico `findOne` de cualquier CRUD.
+> 🎯 **Úsalo en el examen cuando...:** _"obtener X por id"_, _"debe existir"_ — el `GET /:id` de casi todos los exámenes.
+> 🧩 **Cómo se combina:** Ya viene completo: relación + 404. Si dice _"solo ADMIN o propietario"_ → usá el **bloque 55** (este mismo + un `if` de 403).
 
 ```typescript
-findOne(id: number) {
-    return this.exampleRepository.findOne({ where: { id } });
+async findOne(id: number) {
+    const example = await this.exampleRepository.findOne({
+        where: { id },
+        relations: { relatedExample: true }, // relación → si no, NO viene en la respuesta
+    });
+    if (!example) {
+        throw new NotFoundException(`Example with id ${id} not found`); // "debe existir" → 404
+    }
+    return example;
 }
 ```
+
+- `findOne` + `relations` → trae la relación. `findOneBy({ id })` → NO la trae.
+- Sin el `if`, si no existe responde **200 vacío** (no 404).
+- `relatedExample` = nombre de la relación en TU entity (ej. `event`, `user`).
 
 **Controller:**
 
 ```typescript
 @Get(':id')
 @HttpCode(HttpStatus.OK)
+@Permissions('read_example') // nombre EXACTO del seed
 findOne(@Param('id', ParseIntPipe) id: number) {
     return this.exampleService.findOne(id);
 }
@@ -2484,7 +2493,7 @@ import { Request } from 'express';
 import { User } from '../../auth/entities/user.entity';
 
 interface AuthenticatedRequest extends Request {
-    user: User;
+    user?: User; // así la da el profe → en el controller usá req.user!
 }
 ```
 
@@ -2496,7 +2505,7 @@ interface AuthenticatedRequest extends Request {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('view_own_examples')
 findMine(@Req() req: AuthenticatedRequest) {
-    return this.exampleService.findByOwner(req.user.id);
+    return this.exampleService.findByOwner(req.user!.id);
 }
 ```
 
@@ -3007,24 +3016,25 @@ export class ExampleNotFoundException extends NotFoundException {
 
 ### 55. Ver un registro solo si es ADMIN o el dueño (403 si no)
 
-> 🎯 **Úsalo en el examen cuando...:** El enunciado dice que un recurso solo puede verlo/editarlo el ADMIN o su propio dueño, no cualquier usuario autenticado.
-> 🧩 **Cómo se combina:** Es un `findOne` normal (buscar + 404) con un `if` extra en el medio: si no es admin ni dueño, 403.
+> 🎯 **Úsalo en el examen cuando...:** _"solo ADMIN o propietario"_, _"solo el dueño puede verlo"_.
+> 🧩 **Cómo se combina:** Es el **bloque 7** (relación + 404) + un `if` de 403. Recibe `currentUser` (del token).
 
 _(Ejemplo real: `GET /reservations/:id` — solo ADMIN o el dueño de la reserva)_
 
 ```typescript
-async findOneForUser(id: number, currentUser: User) {
+async findOne(id: number, currentUser: User) {
     const example = await this.exampleRepository.findOne({
         where: { id },
-        relations: { owner: true },
+        relations: { owner: true, relatedExample: true }, // owner = relación al User (ej. user)
     });
     if (!example) {
-        throw new NotFoundException('Example not found');
+        throw new NotFoundException('Example not found'); // 404
     }
 
-    const isAdmin = currentUser.role?.name === 'admin';
-    const isOwner = example.owner.id === currentUser.id;
+    const isAdmin = currentUser.role?.name === 'admin'; // nombre del rol en el seed
+    const isOwner = example.owner.id === currentUser.id; // necesita relations: { owner: true }
 
+    // "ADMIN o propietario" → si no es NINGUNO → 403
     if (!isAdmin && !isOwner) {
         throw new ForbiddenException('You do not have access to this resource');
     }
@@ -3033,15 +3043,17 @@ async findOneForUser(id: number, currentUser: User) {
 }
 ```
 
+- `owner` → en el pre-parcial se llama `user`; `relatedExample` → `event`.
+- Sin `relations: { owner: true }`, `example.owner` es `undefined` → **500**.
+
 **Controller:**
 
 ```typescript
-@Get(':id')
+@Get(':id') // ⚠️ va DESPUÉS de @Get('user')
 @HttpCode(HttpStatus.OK)
-@UseGuards(AuthGuard('jwt'), PermissionsGuard)
-@Permissions('view_examples')
+@Permissions('read_example') // nombre EXACTO del seed
 findOne(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.findOneForUser(id, req.user);
+    return this.exampleService.findOne(id, req.user!); // ! porque la interfaz tiene user?
 }
 ```
 
@@ -4414,7 +4426,7 @@ export class CreateExampleDto {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('create_reservations')
 create(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.create(createExampleDto, req.user);
+    return this.exampleService.create(createExampleDto, req.user!);
 }
 ```
 
@@ -4478,7 +4490,7 @@ async cancel(id: number, currentUser: User) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('cancel_reservations')
 cancel(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.cancel(id, req.user);
+    return this.exampleService.cancel(id, req.user!);
 }
 ```
 
@@ -4554,7 +4566,7 @@ update(
     @Body() updateExampleDto: UpdateExampleDto,
     @Req() req: AuthenticatedRequest,
 ) {
-    return this.exampleService.update(id, updateExampleDto, req.user);
+    return this.exampleService.update(id, updateExampleDto, req.user!);
 }
 ```
 
@@ -4794,7 +4806,7 @@ findOne(id: number, currentUser: User) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('read_reservations')
 findOne(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.findOne(id, req.user);
+    return this.exampleService.findOne(id, req.user!);
 }
 ```
 
@@ -4920,7 +4932,7 @@ if (updateExampleDto.relatedExampleId !== undefined) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('create_examples')
 create(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.create(createExampleDto, req.user);
+    return this.exampleService.create(createExampleDto, req.user!);
 }
 ```
 
@@ -4993,7 +5005,7 @@ findFollowing(userId: number) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('follow_users')
 follow(@Param('userId', ParseIntPipe) userId: number, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.follow(userId, req.user);
+    return this.exampleService.follow(userId, req.user!);
 }
 
 @Get(':userId/followers')
@@ -5047,7 +5059,7 @@ async toggle(relatedExampleId: number, currentUser: User) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('like_examples')
 toggle(@Param('relatedExampleId', ParseIntPipe) relatedExampleId: number, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.toggle(relatedExampleId, req.user);
+    return this.exampleService.toggle(relatedExampleId, req.user!);
 }
 ```
 
@@ -5105,7 +5117,7 @@ async findMyCart(ownerId: number) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('manage_cart')
 addToCart(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.addToCart(createExampleDto, req.user);
+    return this.exampleService.addToCart(createExampleDto, req.user!);
 }
 
 // OJO: ruta fija, va ANTES de @Get(':id')
@@ -5114,7 +5126,7 @@ addToCart(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedR
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('manage_cart')
 findMyCart(@Req() req: AuthenticatedRequest) {
-    return this.exampleService.findMyCart(req.user.id);
+    return this.exampleService.findMyCart(req.user!.id);
 }
 ```
 
@@ -5177,7 +5189,7 @@ async checkout(currentUser: User) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('create_orders')
 checkout(@Req() req: AuthenticatedRequest) {
-    return this.orderService.checkout(req.user);
+    return this.orderService.checkout(req.user!);
 }
 ```
 
@@ -5302,7 +5314,7 @@ async create(createExampleDto: CreateExampleDto, currentUser: User) {
 @UseGuards(AuthGuard('jwt'), PermissionsGuard)
 @Permissions('create_questions')
 create(@Body() createExampleDto: CreateExampleDto, @Req() req: AuthenticatedRequest) {
-    return this.exampleService.create(createExampleDto, req.user);
+    return this.exampleService.create(createExampleDto, req.user!);
 }
 ```
 
