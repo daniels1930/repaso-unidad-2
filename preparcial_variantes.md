@@ -48,70 +48,70 @@ te dice qué sección o variante usar (los números son los de este archivo).
 
 `Event` → `Book` · `Reservation` → `Loan` · `availableSpots` → `availableCopies` · `CANCELLED` → `RETURNED`
 
-| El README diría…                                                       | Usá…                    |
-| ---------------------------------------------------------------------- | ----------------------- |
-| "el libro debe existir y estar disponible"                             | 7 (existe + `isActive`) |
-| "debe haber copias disponibles" (1 libro por préstamo)                 | 7 + 7.6                 |
-| "máximo 3 préstamos activos por usuario"                               | 7.1                     |
-| "el préstamo vence a los 14 días"                                      | 7.8                     |
-| "no puede pedir prestado si tiene préstamos vencidos"                  | 7.9                     |
-| "devolver préstamo: debe ser suyo, no devuelto antes, libera la copia" | 8.5                     |
-| "mis préstamos" / "filtrar por estado"                                 | 9 / 9.1                 |
-| "no se puede eliminar un libro con préstamos activos"                  | 6.1                     |
-| ⚠️ Quitá "el evento no debe haber ocurrido" (un libro no tiene fecha)  | —                       |
+| El README diría…                                                       | Usá…                                         |
+| ---------------------------------------------------------------------- | -------------------------------------------- |
+| "el libro debe existir y estar disponible"                             | [7](#7-crear-reserva) (existe + `isActive`)  |
+| "debe haber copias disponibles" (1 libro por préstamo)                 | [7](#7-crear-reserva) + [7.6](#v7-6)         |
+| "máximo 3 préstamos activos por usuario"                               | [7.1](#v7-1)                                 |
+| "el préstamo vence a los 14 días"                                      | [7.8](#v7-8)                                 |
+| "no puede pedir prestado si tiene préstamos vencidos"                  | [7.9](#v7-9)                                 |
+| "devolver préstamo: debe ser suyo, no devuelto antes, libera la copia" | [8.5](#v8-5)                                 |
+| "mis préstamos" / "filtrar por estado"                                 | [9](#9-mis-reservas-get-user) / [9.1](#v9-1) |
+| "no se puede eliminar un libro con préstamos activos"                  | [6.1](#v6-1)                                 |
+| ⚠️ Quitá "el evento no debe haber ocurrido" (un libro no tiene fecha)  | —                                            |
 
 ### 🎓 Cursos — Cursos e Inscripciones
 
 `Event` → `Course` · `Reservation` → `Enrollment` · `capacity` → `maxStudents` · `date` → `startDate` · `CANCELLED` → `WITHDRAWN`
 
-| El README diría…                                              | Usá…      |
-| ------------------------------------------------------------- | --------- |
-| "el curso debe estar activo y no haber iniciado"              | 7         |
-| "cupo máximo de estudiantes" (1 cupo por inscripción)         | 7 + 7.6   |
-| "un estudiante no puede inscribirse dos veces al mismo curso" | 7.4       |
-| "las inscripciones cierran 2 días antes del inicio"           | 7.10      |
-| "retirarse del curso: solo antes de que inicie"               | 8         |
-| "el profesor que creó el curso ve sus inscritos"              | 3.4 + 9.6 |
-| "no se puede reducir el cupo por debajo de los inscritos"     | 4         |
-| "desactivar curso solo si no tiene inscripciones activas"     | 5         |
+| El README diría…                                              | Usá…                                 |
+| ------------------------------------------------------------- | ------------------------------------ |
+| "el curso debe estar activo y no haber iniciado"              | [7](#7-crear-reserva)                |
+| "cupo máximo de estudiantes" (1 cupo por inscripción)         | [7](#7-crear-reserva) + [7.6](#v7-6) |
+| "un estudiante no puede inscribirse dos veces al mismo curso" | [7.4](#v7-4)                         |
+| "las inscripciones cierran 2 días antes del inicio"           | [7.10](#v7-10)                       |
+| "retirarse del curso: solo antes de que inicie"               | [8](#8-cancelar-reserva)             |
+| "el profesor que creó el curso ve sus inscritos"              | [3.4](#v3-4) + [9.6](#v9-6)          |
+| "no se puede reducir el cupo por debajo de los inscritos"     | [4](#4-actualizar-evento)            |
+| "desactivar curso solo si no tiene inscripciones activas"     | [5](#5-desactivar-evento)            |
 
 ### 🛒 Tienda — Productos y Pedidos
 
 `Event` → `Product` · `Reservation` → `Order` · `availableSpots` → `stock` · `ACTIVE` → `PENDING`
 
-| El README diría…                                         | Usá…                                            |
-| -------------------------------------------------------- | ----------------------------------------------- |
-| "el producto debe existir y estar activo"                | 7                                               |
-| "no vender más que el stock" + "descontar el stock"      | 7                                               |
-| "guardar el total del pedido (precio × cantidad)"        | 7.11                                            |
-| "máximo N unidades por pedido"                           | 7.5                                             |
-| "cancelar pedido devuelve el stock"                      | 8 (sin la regla de fecha)                       |
-| "solo se cancela si está PENDIENTE" / "pagar" / "enviar" | 8.6                                             |
-| "mis pedidos, los más recientes primero"                 | 9 + 9.4                                         |
-| ⚠️ "un pedido con VARIOS productos" (carrito)            | Otro esquema → bloque 97 de `metodos_nestjs.md` |
+| El README diría…                                         | Usá…                                                                                                                                      |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| "el producto debe existir y estar activo"                | [7](#7-crear-reserva)                                                                                                                     |
+| "no vender más que el stock" + "descontar el stock"      | [7](#7-crear-reserva)                                                                                                                     |
+| "guardar el total del pedido (precio × cantidad)"        | [7.11](#v7-11)                                                                                                                            |
+| "máximo N unidades por pedido"                           | [7.5](#v7-5)                                                                                                                              |
+| "cancelar pedido devuelve el stock"                      | [8](#8-cancelar-reserva) (sin la regla de fecha)                                                                                          |
+| "solo se cancela si está PENDIENTE" / "pagar" / "enviar" | [8.6](#v8-6)                                                                                                                              |
+| "mis pedidos, los más recientes primero"                 | [9](#9-mis-reservas-get-user) + [9.4](#v9-4)                                                                                              |
+| ⚠️ "un pedido con VARIOS productos" (carrito)            | Otro esquema → [bloque 97](metodos_nestjs.md#97-receta-armada-comprar-el-carrito-pedido--items-en-una-transacción) de `metodos_nestjs.md` |
 
 ### 🚗 Vehículos — Vehículos y Mantenimientos
 
 `Event` → `Vehicle` · `Reservation` → `Maintenance` · `user` → `owner` · **sin cupos**
 
-| El README diría…                                                        | Usá…               |
-| ----------------------------------------------------------------------- | ------------------ |
-| "el vehículo queda a nombre del usuario que lo registra"                | 3.4                |
-| "solo puede agendar mantenimientos para SUS vehículos"                  | 7.12               |
-| "no puede haber dos mantenimientos el mismo día para el mismo vehículo" | 7.13               |
-| "estados PENDING → IN_PROGRESS → DONE, en orden"                        | 8.6 (mismo patrón) |
-| "solo el dueño ve / edita / elimina su vehículo"                        | 10.1 · 11.2 · 12.2 |
-| "mis vehículos"                                                         | 9                  |
-| "no se puede eliminar un vehículo con mantenimientos"                   | 6                  |
-| ⚠️ Quitá todo lo de cupos (`availableSpots`, `quantity`, "máximo 5")    | —                  |
+| El README diría…                                                        | Usá…                                             |
+| ----------------------------------------------------------------------- | ------------------------------------------------ |
+| "el vehículo queda a nombre del usuario que lo registra"                | [3.4](#v3-4)                                     |
+| "solo puede agendar mantenimientos para SUS vehículos"                  | [7.12](#v7-12)                                   |
+| "no puede haber dos mantenimientos el mismo día para el mismo vehículo" | [7.13](#v7-13)                                   |
+| "estados PENDING → IN_PROGRESS → DONE, en orden"                        | [8.6](#v8-6) (mismo patrón)                      |
+| "solo el dueño ve / edita / elimina su vehículo"                        | [10.1](#v10-1) · [11.2](#v11-2) · [12.2](#v12-2) |
+| "mis vehículos"                                                         | [9](#9-mis-reservas-get-user)                    |
+| "no se puede eliminar un vehículo con mantenimientos"                   | [6](#6-eliminar-evento)                          |
+| ⚠️ Quitá todo lo de cupos (`availableSpots`, `quantity`, "máximo 5")    | —                                                |
 
 ### 🧭 ¿Otro tema? Respondé estas 5 preguntas
 
 1. ¿Cuál es el **padre** (lo que existe primero)? → hace de `Event`.
 2. ¿Cuál es el **hijo** que crea el usuario? → hace de `Reservation`.
-3. ¿El padre tiene algo que **se gasta** (cupos, stock, copias)? → **sí:** secciones 7 y 8 con cupos · **no:** quitá esas líneas.
-4. ¿El hijo tiene **estados**? ¿Qué acción lo **deshace** o lo **avanza**? → 8 · 8.5 · 8.6.
-5. ¿Qué depende de **quién** pregunta ("mis", "solo el dueño", "ADMIN o dueño")? → 2 · 9 · 10.
+3. ¿El padre tiene algo que **se gasta** (cupos, stock, copias)? → **sí:** secciones [7](#7-crear-reserva) y [8](#8-cancelar-reserva) con cupos · **no:** quitá esas líneas.
+4. ¿El hijo tiene **estados**? ¿Qué acción lo **deshace** o lo **avanza**? → [8](#8-cancelar-reserva) · [8.5](#v8-5) · [8.6](#v8-6).
+5. ¿Qué depende de **quién** pregunta ("mis", "solo el dueño", "ADMIN o dueño")? → [2](#2-usuario-del-token-requser) · [9](#9-mis-reservas-get-user) · [10](#10-ver-una-admin-o-dueño).
 
 ---
 
@@ -142,13 +142,15 @@ export class ReservationController {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                      | Qué cambia                                                           |
-| --- | -------------------------------------------------------- | -------------------------------------------------------------------- |
-| 1.1 | «este endpoint es público» / «no requiere autenticación» | Guards en cada método (no en la clase); al público no le pongas nada |
-| 1.2 | «requiere los permisos X y Y»                            | Varios nombres en `@Permissions` (tu guard exige TODOS)              |
-| 1.3 | «con cualquiera de los permisos X o Y»                   | Guard nuevo igual al tuyo pero con `some` en vez de `every`          |
-| 1.4 | «solo el rol ADMIN puede…» (roles, no permisos)          | Decorador `@Roles` + `RolesGuard` que compara `user.role.name`       |
-| 1.5 | «solo usuarios autenticados» (cualquier rol)             | Quitá el `@Permissions` (tu guard deja pasar si no hay)              |
+| #            | Si el parcial dice…                                      | Qué cambia                                                           |
+| ------------ | -------------------------------------------------------- | -------------------------------------------------------------------- |
+| [1.1](#v1-1) | «este endpoint es público» / «no requiere autenticación» | Guards en cada método (no en la clase); al público no le pongas nada |
+| [1.2](#v1-2) | «requiere los permisos X y Y»                            | Varios nombres en `@Permissions` (tu guard exige TODOS)              |
+| [1.3](#v1-3) | «con cualquiera de los permisos X o Y»                   | Guard nuevo igual al tuyo pero con `some` en vez de `every`          |
+| [1.4](#v1-4) | «solo el rol ADMIN puede…» (roles, no permisos)          | Decorador `@Roles` + `RolesGuard` que compara `user.role.name`       |
+| [1.5](#v1-5) | «solo usuarios autenticados» (cualquier rol)             | Quitá el `@Permissions` (tu guard deja pasar si no hay)              |
+
+<a name="v1-1"></a>
 
 <details>
 <summary><b>1.1 «este endpoint es público» / «no requiere autenticación»</b></summary>
@@ -181,6 +183,8 @@ export class EventController {
 
 </details>
 
+<a name="v1-2"></a>
+
 <details>
 <summary><b>1.2 «requiere los permisos X y Y»</b></summary>
 
@@ -196,6 +200,8 @@ deactivate(@Param('id', ParseIntPipe) id: number) {
 ```
 
 </details>
+
+<a name="v1-3"></a>
 
 <details>
 <summary><b>1.3 «con cualquiera de los permisos X o Y»</b></summary>
@@ -241,6 +247,8 @@ findAll() {
 
 </details>
 
+<a name="v1-4"></a>
+
 <details>
 <summary><b>1.4 «solo el rol ADMIN puede…» (roles, no permisos)</b></summary>
 
@@ -282,6 +290,8 @@ remove(@Param('id', ParseIntPipe) id: number) {
 ```
 
 </details>
+
+<a name="v1-5"></a>
 
 <details>
 <summary><b>1.5 «solo usuarios autenticados» (cualquier rol)</b></summary>
@@ -354,12 +364,14 @@ async create(createEventDto: CreateEventDto): Promise<Event> {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                  | Qué cambia                                                                 |
-| --- | ---------------------------------------------------- | -------------------------------------------------------------------------- |
-| 3.1 | «con al menos 3 días de anticipación»                | Fecha mínima = hoy + N días                                                |
-| 3.2 | «la fecha debe estar dentro de los próximos 30 días» | Futura + fecha máxima = hoy + N días                                       |
-| 3.3 | «no pueden existir dos eventos con el mismo nombre»  | `existsBy({ name })` antes de crear → 409                                  |
-| 3.4 | «el evento queda a nombre del usuario que lo crea»   | Relación `createdBy` en la entity + `req.user!` + `createdBy: currentUser` |
+| #            | Si el parcial dice…                                  | Qué cambia                                                                 |
+| ------------ | ---------------------------------------------------- | -------------------------------------------------------------------------- |
+| [3.1](#v3-1) | «con al menos 3 días de anticipación»                | Fecha mínima = hoy + N días                                                |
+| [3.2](#v3-2) | «la fecha debe estar dentro de los próximos 30 días» | Futura + fecha máxima = hoy + N días                                       |
+| [3.3](#v3-3) | «no pueden existir dos eventos con el mismo nombre»  | `existsBy({ name })` antes de crear → 409                                  |
+| [3.4](#v3-4) | «el evento queda a nombre del usuario que lo crea»   | Relación `createdBy` en la entity + `req.user!` + `createdBy: currentUser` |
+
+<a name="v3-1"></a>
 
 <details>
 <summary><b>3.1 «con al menos 3 días de anticipación»</b></summary>
@@ -383,6 +395,8 @@ async create(createEventDto: CreateEventDto): Promise<Event> {
 ```
 
 </details>
+
+<a name="v3-2"></a>
 
 <details>
 <summary><b>3.2 «la fecha debe estar dentro de los próximos 30 días»</b></summary>
@@ -411,6 +425,8 @@ async create(createEventDto: CreateEventDto): Promise<Event> {
 
 </details>
 
+<a name="v3-3"></a>
+
 <details>
 <summary><b>3.3 «no pueden existir dos eventos con el mismo nombre»</b></summary>
 
@@ -435,6 +451,8 @@ async create(createEventDto: CreateEventDto): Promise<Event> {
 ```
 
 </details>
+
+<a name="v3-4"></a>
 
 <details>
 <summary><b>3.4 «el evento queda a nombre del usuario que lo crea»</b></summary>
@@ -512,12 +530,14 @@ async update(id: number, updateEventDto: UpdateEventDto) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                        | Qué cambia                                                     |
-| --- | ---------------------------------------------------------- | -------------------------------------------------------------- |
-| 4.1 | «no se puede modificar un evento inactivo»                 | Después del 404: `if (!event.isActive)` → 400                  |
-| 4.2 | «no se puede modificar un evento que ya ocurrió»           | Después del 404: fecha del evento <= ahora → 400               |
-| 4.3 | «no se puede cambiar la fecha si el evento tiene reservas» | `if (dto.date && reservedSpots > 0)` → 409                     |
-| 4.4 | «la capacidad no se puede modificar» (un campo bloqueado)  | DTO con `OmitType` + quitar el bloque de ese campo del service |
+| #            | Si el parcial dice…                                        | Qué cambia                                                     |
+| ------------ | ---------------------------------------------------------- | -------------------------------------------------------------- |
+| [4.1](#v4-1) | «no se puede modificar un evento inactivo»                 | Después del 404: `if (!event.isActive)` → 400                  |
+| [4.2](#v4-2) | «no se puede modificar un evento que ya ocurrió»           | Después del 404: fecha del evento <= ahora → 400               |
+| [4.3](#v4-3) | «no se puede cambiar la fecha si el evento tiene reservas» | `if (dto.date && reservedSpots > 0)` → 409                     |
+| [4.4](#v4-4) | «la capacidad no se puede modificar» (un campo bloqueado)  | DTO con `OmitType` + quitar el bloque de ese campo del service |
+
+<a name="v4-1"></a>
 
 <details>
 <summary><b>4.1 «no se puede modificar un evento inactivo»</b></summary>
@@ -555,6 +575,8 @@ async update(id: number, updateEventDto: UpdateEventDto) {
 
 </details>
 
+<a name="v4-2"></a>
+
 <details>
 <summary><b>4.2 «no se puede modificar un evento que ya ocurrió»</b></summary>
 
@@ -591,6 +613,8 @@ async update(id: number, updateEventDto: UpdateEventDto) {
 
 </details>
 
+<a name="v4-3"></a>
+
 <details>
 <summary><b>4.3 «no se puede cambiar la fecha si el evento tiene reservas»</b></summary>
 
@@ -623,6 +647,8 @@ async update(id: number, updateEventDto: UpdateEventDto) {
 ```
 
 </details>
+
+<a name="v4-4"></a>
 
 <details>
 <summary><b>4.4 «la capacidad no se puede modificar» (un campo bloqueado)</b></summary>
@@ -697,11 +723,13 @@ async deactivate(id: number) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                   | Qué cambia                                                      |
-| --- | ----------------------------------------------------- | --------------------------------------------------------------- |
-| 5.1 | «activar evento»                                      | Al revés: `if (event.isActive)` → 409 y `isActive = true`       |
-| 5.2 | «activar o desactivar con el mismo endpoint» (toggle) | Sin el `if` de "ya estaba": `isActive = !isActive`              |
-| 5.3 | «al desactivar un evento se cancelan sus reservas»    | En vez del 409: cancelar todas las activas y devolver los cupos |
+| #            | Si el parcial dice…                                   | Qué cambia                                                      |
+| ------------ | ----------------------------------------------------- | --------------------------------------------------------------- |
+| [5.1](#v5-1) | «activar evento»                                      | Al revés: `if (event.isActive)` → 409 y `isActive = true`       |
+| [5.2](#v5-2) | «activar o desactivar con el mismo endpoint» (toggle) | Sin el `if` de "ya estaba": `isActive = !isActive`              |
+| [5.3](#v5-3) | «al desactivar un evento se cancelan sus reservas»    | En vez del 409: cancelar todas las activas y devolver los cupos |
+
+<a name="v5-1"></a>
 
 <details>
 <summary><b>5.1 «activar evento»</b></summary>
@@ -737,6 +765,8 @@ async activate(id: number) {
 
 </details>
 
+<a name="v5-2"></a>
+
 <details>
 <summary><b>5.2 «activar o desactivar con el mismo endpoint» (toggle)</b></summary>
 
@@ -764,6 +794,8 @@ async deactivate(id: number) {
 ```
 
 </details>
+
+<a name="v5-3"></a>
 
 <details>
 <summary><b>5.3 «al desactivar un evento se cancelan sus reservas»</b></summary>
@@ -824,11 +856,13 @@ async remove(id: number) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                               | Qué cambia                                                     |
-| --- | ----------------------------------------------------------------- | -------------------------------------------------------------- |
-| 6.1 | «no se puede eliminar si tiene reservas activas»                  | Contar solo ACTIVAS y borrar antes las canceladas              |
-| 6.2 | «al eliminar un evento se eliminan sus reservas»                  | `onDelete: 'CASCADE'` en la reserva + `delete` sin contar      |
-| 6.3 | «no borrar el evento, solo marcarlo como eliminado» (soft delete) | `@DeleteDateColumn` + `softDelete(id)`; `find()` ya no lo trae |
+| #            | Si el parcial dice…                                               | Qué cambia                                                     |
+| ------------ | ----------------------------------------------------------------- | -------------------------------------------------------------- |
+| [6.1](#v6-1) | «no se puede eliminar si tiene reservas activas»                  | Contar solo ACTIVAS y borrar antes las canceladas              |
+| [6.2](#v6-2) | «al eliminar un evento se eliminan sus reservas»                  | `onDelete: 'CASCADE'` en la reserva + `delete` sin contar      |
+| [6.3](#v6-3) | «no borrar el evento, solo marcarlo como eliminado» (soft delete) | `@DeleteDateColumn` + `softDelete(id)`; `find()` ya no lo trae |
+
+<a name="v6-1"></a>
 
 <details>
 <summary><b>6.1 «no se puede eliminar si tiene reservas activas»</b></summary>
@@ -858,6 +892,8 @@ async remove(id: number) {
 
 </details>
 
+<a name="v6-2"></a>
+
 <details>
 <summary><b>6.2 «al eliminar un evento se eliminan sus reservas»</b></summary>
 
@@ -885,6 +921,8 @@ async remove(id: number) {
 ```
 
 </details>
+
+<a name="v6-3"></a>
 
 <details>
 <summary><b>6.3 «no borrar el evento, solo marcarlo como eliminado» (soft delete)</b></summary>
@@ -982,21 +1020,23 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #    | Si el parcial dice…                                                           | Qué cambia                                                                    |
-| ---- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 7.1  | «máximo 3 reservas activas por usuario» (reservas, no cupos)                  | `find` + `reduce` → `count()` y `>= 3`                                        |
-| 7.2  | «máximo 5 cupos activos en total» (sumando todos los eventos)                 | Quitar `event: { id }` del `where`                                            |
-| 7.3  | «el administrador no tiene límite de cupos»                                   | Envolver el límite en `if (!isAdmin)`                                         |
-| 7.4  | «un usuario no puede reservar dos veces el mismo evento»                      | `count` de sus activas en el evento > 0 → 409                                 |
-| 7.5  | «máximo 5 cupos por reserva»                                                  | `@Max(5)` en el DTO (el service no cambia)                                    |
-| 7.6  | «cada reserva corresponde a un solo cupo» (sin cantidad)                      | DTO sin `quantity`; usar `1` y contar reservas                                |
-| 7.7  | «solo se puede reservar para eventos de los próximos 7 días»                  | Además de "no ocurrió": fecha del evento <= hoy + 7                           |
-| 7.8  | «el préstamo vence a los 14 días» (guardar fecha límite)                      | Columna `dueDate` + calcularla al crear (hoy + 14)                            |
-| 7.9  | «no puede pedir prestado si tiene préstamos vencidos»                         | `count` de sus activas con `dueDate < ahora` (`LessThan`) → 400               |
-| 7.10 | «las inscripciones cierran 2 días antes del inicio»                           | Cierre = fecha del evento − 2 días; ahora > cierre → 400                      |
-| 7.11 | «guardar el total del pedido (precio × cantidad)»                             | Columna `price` en el padre y `total` en el hijo; `total = price * quantity`  |
-| 7.12 | «solo puede crear mantenimientos para SUS vehículos» (el padre debe ser suyo) | Relación `owner` en el padre + `if (event.owner.id !== currentUser.id)` → 403 |
-| 7.13 | «no puede haber dos mantenimientos el mismo día para el mismo vehículo»       | El hijo trae `date`; `count` con `Between(inicio del día, fin del día)` → 409 |
+| #              | Si el parcial dice…                                                           | Qué cambia                                                                    |
+| -------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [7.1](#v7-1)   | «máximo 3 reservas activas por usuario» (reservas, no cupos)                  | `find` + `reduce` → `count()` y `>= 3`                                        |
+| [7.2](#v7-2)   | «máximo 5 cupos activos en total» (sumando todos los eventos)                 | Quitar `event: { id }` del `where`                                            |
+| [7.3](#v7-3)   | «el administrador no tiene límite de cupos»                                   | Envolver el límite en `if (!isAdmin)`                                         |
+| [7.4](#v7-4)   | «un usuario no puede reservar dos veces el mismo evento»                      | `count` de sus activas en el evento > 0 → 409                                 |
+| [7.5](#v7-5)   | «máximo 5 cupos por reserva»                                                  | `@Max(5)` en el DTO (el service no cambia)                                    |
+| [7.6](#v7-6)   | «cada reserva corresponde a un solo cupo» (sin cantidad)                      | DTO sin `quantity`; usar `1` y contar reservas                                |
+| [7.7](#v7-7)   | «solo se puede reservar para eventos de los próximos 7 días»                  | Además de "no ocurrió": fecha del evento <= hoy + 7                           |
+| [7.8](#v7-8)   | «el préstamo vence a los 14 días» (guardar fecha límite)                      | Columna `dueDate` + calcularla al crear (hoy + 14)                            |
+| [7.9](#v7-9)   | «no puede pedir prestado si tiene préstamos vencidos»                         | `count` de sus activas con `dueDate < ahora` (`LessThan`) → 400               |
+| [7.10](#v7-10) | «las inscripciones cierran 2 días antes del inicio»                           | Cierre = fecha del evento − 2 días; ahora > cierre → 400                      |
+| [7.11](#v7-11) | «guardar el total del pedido (precio × cantidad)»                             | Columna `price` en el padre y `total` en el hijo; `total = price * quantity`  |
+| [7.12](#v7-12) | «solo puede crear mantenimientos para SUS vehículos» (el padre debe ser suyo) | Relación `owner` en el padre + `if (event.owner.id !== currentUser.id)` → 403 |
+| [7.13](#v7-13) | «no puede haber dos mantenimientos el mismo día para el mismo vehículo»       | El hijo trae `date`; `count` con `Between(inicio del día, fin del día)` → 409 |
+
+<a name="v7-1"></a>
 
 <details>
 <summary><b>7.1 «máximo 3 reservas activas por usuario» (reservas, no cupos)</b></summary>
@@ -1048,6 +1088,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-2"></a>
+
 <details>
 <summary><b>7.2 «máximo 5 cupos activos en total» (sumando todos los eventos)</b></summary>
 
@@ -1097,6 +1139,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 ```
 
 </details>
+
+<a name="v7-3"></a>
 
 <details>
 <summary><b>7.3 «el administrador no tiene límite de cupos»</b></summary>
@@ -1154,6 +1198,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-4"></a>
+
 <details>
 <summary><b>7.4 «un usuario no puede reservar dos veces el mismo evento»</b></summary>
 
@@ -1204,6 +1250,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-5"></a>
+
 <details>
 <summary><b>7.5 «máximo 5 cupos por reserva»</b></summary>
 
@@ -1225,6 +1273,8 @@ export class CreateReservationDto {
 ```
 
 </details>
+
+<a name="v7-6"></a>
 
 <details>
 <summary><b>7.6 «cada reserva corresponde a un solo cupo» (sin cantidad)</b></summary>
@@ -1288,6 +1338,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-7"></a>
+
 <details>
 <summary><b>7.7 «solo se puede reservar para eventos de los próximos 7 días»</b></summary>
 
@@ -1347,6 +1399,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 ```
 
 </details>
+
+<a name="v7-8"></a>
 
 <details>
 <summary><b>7.8 «el préstamo vence a los 14 días» (guardar fecha límite)</b></summary>
@@ -1413,6 +1467,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-9"></a>
+
 <details>
 <summary><b>7.9 «no puede pedir prestado si tiene préstamos vencidos»</b></summary>
 
@@ -1478,6 +1534,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-10"></a>
+
 <details>
 <summary><b>7.10 «las inscripciones cierran 2 días antes del inicio»</b></summary>
 
@@ -1533,6 +1591,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 ```
 
 </details>
+
+<a name="v7-11"></a>
 
 <details>
 <summary><b>7.11 «guardar el total del pedido (precio × cantidad)»</b></summary>
@@ -1604,6 +1664,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<a name="v7-12"></a>
+
 <details>
 <summary><b>7.12 «solo puede crear mantenimientos para SUS vehículos» (el padre debe ser suyo)</b></summary>
 
@@ -1673,6 +1735,8 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 ```
 
 </details>
+
+<a name="v7-13"></a>
 
 <details>
 <summary><b>7.13 «no puede haber dos mantenimientos el mismo día para el mismo vehículo»</b></summary>
@@ -1823,14 +1887,16 @@ async cancel(id: number, currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                                                    | Qué cambia                                                       |
-| --- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| 8.1 | «el administrador también puede cancelar cualquier reserva»                            | `if (!isAdmin && !isOwner)` → 403                                |
-| 8.2 | «solo se puede cancelar hasta 24 horas antes del evento»                               | Límite = fecha del evento − N horas; ahora > límite → 400        |
-| 8.3 | «al cancelar, la reserva se elimina»                                                   | En vez de `status = CANCELLED`: `manager.delete`                 |
-| 8.4 | «registrar la fecha de cancelación»                                                    | Columna `cancelledAt` (nullable) + `= new Date()`                |
-| 8.5 | «devolver préstamo: marcarlo como devuelto y liberar la copia»                         | Estado nuevo `RETURNED` + `returnedAt`; sin la regla de fecha    |
-| 8.6 | «solo se puede cancelar si el pedido está PENDIENTE» / «pagar: solo si está pendiente» | Enum con los estados del flujo + `if (status !== PENDING)` → 409 |
+| #            | Si el parcial dice…                                                                    | Qué cambia                                                       |
+| ------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [8.1](#v8-1) | «el administrador también puede cancelar cualquier reserva»                            | `if (!isAdmin && !isOwner)` → 403                                |
+| [8.2](#v8-2) | «solo se puede cancelar hasta 24 horas antes del evento»                               | Límite = fecha del evento − N horas; ahora > límite → 400        |
+| [8.3](#v8-3) | «al cancelar, la reserva se elimina»                                                   | En vez de `status = CANCELLED`: `manager.delete`                 |
+| [8.4](#v8-4) | «registrar la fecha de cancelación»                                                    | Columna `cancelledAt` (nullable) + `= new Date()`                |
+| [8.5](#v8-5) | «devolver préstamo: marcarlo como devuelto y liberar la copia»                         | Estado nuevo `RETURNED` + `returnedAt`; sin la regla de fecha    |
+| [8.6](#v8-6) | «solo se puede cancelar si el pedido está PENDIENTE» / «pagar: solo si está pendiente» | Enum con los estados del flujo + `if (status !== PENDING)` → 409 |
+
+<a name="v8-1"></a>
 
 <details>
 <summary><b>8.1 «el administrador también puede cancelar cualquier reserva»</b></summary>
@@ -1869,6 +1935,8 @@ async cancel(id: number, currentUser: User) {
 ```
 
 </details>
+
+<a name="v8-2"></a>
 
 <details>
 <summary><b>8.2 «solo se puede cancelar hasta 24 horas antes del evento»</b></summary>
@@ -1911,6 +1979,8 @@ async cancel(id: number, currentUser: User) {
 
 </details>
 
+<a name="v8-3"></a>
+
 <details>
 <summary><b>8.3 «al cancelar, la reserva se elimina»</b></summary>
 
@@ -1945,6 +2015,8 @@ async cancel(id: number, currentUser: User) {
 ```
 
 </details>
+
+<a name="v8-4"></a>
 
 <details>
 <summary><b>8.4 «registrar la fecha de cancelación»</b></summary>
@@ -1989,6 +2061,8 @@ async cancel(id: number, currentUser: User) {
 ```
 
 </details>
+
+<a name="v8-5"></a>
 
 <details>
 <summary><b>8.5 «devolver préstamo: marcarlo como devuelto y liberar la copia»</b></summary>
@@ -2053,6 +2127,8 @@ async markReturned(id: number, currentUser: User) {
 ```
 
 </details>
+
+<a name="v8-6"></a>
 
 <details>
 <summary><b>8.6 «solo se puede cancelar si el pedido está PENDIENTE» / «pagar: solo si está pendiente»</b></summary>
@@ -2145,14 +2221,16 @@ async findMine(currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                            | Qué cambia                                                                    |
-| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| 9.1 | «permitir filtrar mis reservas por estado» (`?status=ACTIVE`)  | `@Query('status')` + `...(status && { status })` en el `where`                |
-| 9.2 | «mostrar solo mis reservas activas»                            | `status: ReservationStatus.ACTIVE` en el `where`                              |
-| 9.3 | «mostrar solo reservas de eventos que no han ocurrido»         | `event: { date: MoreThan(new Date()) }` (import de `typeorm`)                 |
-| 9.4 | «ordenadas de la más reciente a la más antigua»                | `order: { createdAt: 'DESC' }`                                                |
-| 9.5 | «el administrador puede ver las reservas de cualquier usuario» | `GET /user/:userId` con `@Param` (antes de `:id`)                             |
-| 9.6 | «el creador del curso puede ver los inscritos de su curso»     | `GET /event/:eventId`: el padre debe ser suyo (o ADMIN) y se listan sus hijos |
+| #            | Si el parcial dice…                                            | Qué cambia                                                                    |
+| ------------ | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| [9.1](#v9-1) | «permitir filtrar mis reservas por estado» (`?status=ACTIVE`)  | `@Query('status')` + `...(status && { status })` en el `where`                |
+| [9.2](#v9-2) | «mostrar solo mis reservas activas»                            | `status: ReservationStatus.ACTIVE` en el `where`                              |
+| [9.3](#v9-3) | «mostrar solo reservas de eventos que no han ocurrido»         | `event: { date: MoreThan(new Date()) }` (import de `typeorm`)                 |
+| [9.4](#v9-4) | «ordenadas de la más reciente a la más antigua»                | `order: { createdAt: 'DESC' }`                                                |
+| [9.5](#v9-5) | «el administrador puede ver las reservas de cualquier usuario» | `GET /user/:userId` con `@Param` (antes de `:id`)                             |
+| [9.6](#v9-6) | «el creador del curso puede ver los inscritos de su curso»     | `GET /event/:eventId`: el padre debe ser suyo (o ADMIN) y se listan sus hijos |
+
+<a name="v9-1"></a>
 
 <details>
 <summary><b>9.1 «permitir filtrar mis reservas por estado» (`?status=ACTIVE`)</b></summary>
@@ -2187,6 +2265,8 @@ async findMine(currentUser: User, status?: ReservationStatus) {
 
 </details>
 
+<a name="v9-2"></a>
+
 <details>
 <summary><b>9.2 «mostrar solo mis reservas activas»</b></summary>
 
@@ -2205,6 +2285,8 @@ async findMine(currentUser: User) {
 ```
 
 </details>
+
+<a name="v9-3"></a>
 
 <details>
 <summary><b>9.3 «mostrar solo reservas de eventos que no han ocurrido»</b></summary>
@@ -2226,6 +2308,8 @@ async findMine(currentUser: User) {
 
 </details>
 
+<a name="v9-4"></a>
+
 <details>
 <summary><b>9.4 «ordenadas de la más reciente a la más antigua»</b></summary>
 
@@ -2242,6 +2326,8 @@ async findMine(currentUser: User) {
 ```
 
 </details>
+
+<a name="v9-5"></a>
 
 <details>
 <summary><b>9.5 «el administrador puede ver las reservas de cualquier usuario»</b></summary>
@@ -2270,6 +2356,8 @@ async findByUser(userId: number) {
 ```
 
 </details>
+
+<a name="v9-6"></a>
 
 <details>
 <summary><b>9.6 «el creador del curso puede ver los inscritos de su curso»</b></summary>
@@ -2353,11 +2441,13 @@ async findOne(id: number, currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #    | Si el parcial dice…                                        | Qué cambia                                       |
-| ---- | ---------------------------------------------------------- | ------------------------------------------------ |
-| 10.1 | «solo el dueño puede ver su reserva»                       | Quitar `isAdmin`: `if (!isOwner)`                |
-| 10.2 | «solo el administrador puede consultar una reserva por id» | Sin `req.user`: el permiso de admin alcanza      |
-| 10.3 | «no exponer información sensible del usuario» (contraseña) | Devolver solo `id`, `username`, `email` del user |
+| #              | Si el parcial dice…                                        | Qué cambia                                       |
+| -------------- | ---------------------------------------------------------- | ------------------------------------------------ |
+| [10.1](#v10-1) | «solo el dueño puede ver su reserva»                       | Quitar `isAdmin`: `if (!isOwner)`                |
+| [10.2](#v10-2) | «solo el administrador puede consultar una reserva por id» | Sin `req.user`: el permiso de admin alcanza      |
+| [10.3](#v10-3) | «no exponer información sensible del usuario» (contraseña) | Devolver solo `id`, `username`, `email` del user |
+
+<a name="v10-1"></a>
 
 <details>
 <summary><b>10.1 «solo el dueño puede ver su reserva»</b></summary>
@@ -2382,6 +2472,8 @@ async findOne(id: number, currentUser: User) {
 ```
 
 </details>
+
+<a name="v10-2"></a>
 
 <details>
 <summary><b>10.2 «solo el administrador puede consultar una reserva por id»</b></summary>
@@ -2413,6 +2505,8 @@ async findOne(id: number) {
 ```
 
 </details>
+
+<a name="v10-3"></a>
 
 <details>
 <summary><b>10.3 «no exponer información sensible del usuario» (contraseña)</b></summary>
@@ -2524,11 +2618,13 @@ async update(id: number, updateReservationDto: UpdateReservationDto, currentUser
 
 ### 🔄 Si el parcial lo cambia
 
-| #    | Si el parcial dice…                                  | Qué cambia                                                          |
-| ---- | ---------------------------------------------------- | ------------------------------------------------------------------- |
-| 11.1 | «solo se puede disminuir la cantidad de una reserva» | `if (difference > 0)` → 400; sin validar cupos ni límite            |
-| 11.2 | «solo el dueño puede modificar su reserva»           | Sin `isAdmin`: `if (reservation.user.id !== currentUser.id)`        |
-| 11.3 | «se permite cambiar la reserva a otro evento»        | DTO con `eventId` opcional; devolver al viejo y descontar del nuevo |
+| #              | Si el parcial dice…                                  | Qué cambia                                                          |
+| -------------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
+| [11.1](#v11-1) | «solo se puede disminuir la cantidad de una reserva» | `if (difference > 0)` → 400; sin validar cupos ni límite            |
+| [11.2](#v11-2) | «solo el dueño puede modificar su reserva»           | Sin `isAdmin`: `if (reservation.user.id !== currentUser.id)`        |
+| [11.3](#v11-3) | «se permite cambiar la reserva a otro evento»        | DTO con `eventId` opcional; devolver al viejo y descontar del nuevo |
+
+<a name="v11-1"></a>
 
 <details>
 <summary><b>11.1 «solo se puede disminuir la cantidad de una reserva»</b></summary>
@@ -2571,6 +2667,8 @@ async update(id: number, updateReservationDto: UpdateReservationDto, currentUser
 ```
 
 </details>
+
+<a name="v11-2"></a>
 
 <details>
 <summary><b>11.2 «solo el dueño puede modificar su reserva»</b></summary>
@@ -2627,6 +2725,8 @@ async update(id: number, updateReservationDto: UpdateReservationDto, currentUser
 ```
 
 </details>
+
+<a name="v11-3"></a>
 
 <details>
 <summary><b>11.3 «se permite cambiar la reserva a otro evento»</b></summary>
@@ -2756,10 +2856,12 @@ async remove(id: number) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #    | Si el parcial dice…                              | Qué cambia                                |
-| ---- | ------------------------------------------------ | ----------------------------------------- |
-| 12.1 | «solo se pueden eliminar reservas canceladas»    | Activa → 409 (y ya no se devuelven cupos) |
-| 12.2 | «el usuario puede eliminar sus propias reservas» | `req.user!` + ADMIN o dueño (403)         |
+| #              | Si el parcial dice…                              | Qué cambia                                |
+| -------------- | ------------------------------------------------ | ----------------------------------------- |
+| [12.1](#v12-1) | «solo se pueden eliminar reservas canceladas»    | Activa → 409 (y ya no se devuelven cupos) |
+| [12.2](#v12-2) | «el usuario puede eliminar sus propias reservas» | `req.user!` + ADMIN o dueño (403)         |
+
+<a name="v12-1"></a>
 
 <details>
 <summary><b>12.1 «solo se pueden eliminar reservas canceladas»</b></summary>
@@ -2787,6 +2889,8 @@ async remove(id: number) {
 ```
 
 </details>
+
+<a name="v12-2"></a>
 
 <details>
 <summary><b>12.2 «el usuario puede eliminar sus propias reservas»</b></summary>
