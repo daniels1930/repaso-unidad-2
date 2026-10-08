@@ -21,6 +21,7 @@ Si el parcial es de otro tema, cambiá solo los nombres; la lógica es la misma.
 
 ## Índice
 
+0. [El mismo preparcial con otro tema](#0-el-mismo-preparcial-con-otro-tema)
 1. [Guards y permisos](#1-guards-y-permisos)
 2. [Usuario del token (`req.user`)](#2-usuario-del-token-requser)
 3. [Crear evento](#3-crear-evento)
@@ -34,6 +35,83 @@ Si el parcial es de otro tema, cambiá solo los nombres; la lógica es la misma.
 11. [Actualizar reserva](#11-actualizar-reserva)
 12. [Eliminar reserva + tabla de errores](#12-eliminar-reserva--tabla-de-errores)
 13. [❌ Errores que ya cometí (no repetir)](#-errores-que-ya-cometí-no-repetir)
+
+---
+
+## 0. El mismo preparcial con otro tema
+
+El parcial probablemente tenga **la misma forma** (padre + hijo, permisos, `req.user`,
+reglas en el service) con **otro tema**. Buscá tu tema: cada fila del README del profe
+te dice qué sección o variante usar (los números son los de este archivo).
+
+### 📚 Biblioteca — Libros y Préstamos
+
+`Event` → `Book` · `Reservation` → `Loan` · `availableSpots` → `availableCopies` · `CANCELLED` → `RETURNED`
+
+| El README diría…                                                       | Usá…                    |
+| ---------------------------------------------------------------------- | ----------------------- |
+| "el libro debe existir y estar disponible"                             | 7 (existe + `isActive`) |
+| "debe haber copias disponibles" (1 libro por préstamo)                 | 7 + 7.6                 |
+| "máximo 3 préstamos activos por usuario"                               | 7.1                     |
+| "el préstamo vence a los 14 días"                                      | 7.8                     |
+| "no puede pedir prestado si tiene préstamos vencidos"                  | 7.9                     |
+| "devolver préstamo: debe ser suyo, no devuelto antes, libera la copia" | 8.5                     |
+| "mis préstamos" / "filtrar por estado"                                 | 9 / 9.1                 |
+| "no se puede eliminar un libro con préstamos activos"                  | 6.1                     |
+| ⚠️ Quitá "el evento no debe haber ocurrido" (un libro no tiene fecha)  | —                       |
+
+### 🎓 Cursos — Cursos e Inscripciones
+
+`Event` → `Course` · `Reservation` → `Enrollment` · `capacity` → `maxStudents` · `date` → `startDate` · `CANCELLED` → `WITHDRAWN`
+
+| El README diría…                                              | Usá…      |
+| ------------------------------------------------------------- | --------- |
+| "el curso debe estar activo y no haber iniciado"              | 7         |
+| "cupo máximo de estudiantes" (1 cupo por inscripción)         | 7 + 7.6   |
+| "un estudiante no puede inscribirse dos veces al mismo curso" | 7.4       |
+| "las inscripciones cierran 2 días antes del inicio"           | 7.10      |
+| "retirarse del curso: solo antes de que inicie"               | 8         |
+| "el profesor que creó el curso ve sus inscritos"              | 3.4 + 9.6 |
+| "no se puede reducir el cupo por debajo de los inscritos"     | 4         |
+| "desactivar curso solo si no tiene inscripciones activas"     | 5         |
+
+### 🛒 Tienda — Productos y Pedidos
+
+`Event` → `Product` · `Reservation` → `Order` · `availableSpots` → `stock` · `ACTIVE` → `PENDING`
+
+| El README diría…                                         | Usá…                                            |
+| -------------------------------------------------------- | ----------------------------------------------- |
+| "el producto debe existir y estar activo"                | 7                                               |
+| "no vender más que el stock" + "descontar el stock"      | 7                                               |
+| "guardar el total del pedido (precio × cantidad)"        | 7.11                                            |
+| "máximo N unidades por pedido"                           | 7.5                                             |
+| "cancelar pedido devuelve el stock"                      | 8 (sin la regla de fecha)                       |
+| "solo se cancela si está PENDIENTE" / "pagar" / "enviar" | 8.6                                             |
+| "mis pedidos, los más recientes primero"                 | 9 + 9.4                                         |
+| ⚠️ "un pedido con VARIOS productos" (carrito)            | Otro esquema → bloque 97 de `metodos_nestjs.md` |
+
+### 🚗 Vehículos — Vehículos y Mantenimientos
+
+`Event` → `Vehicle` · `Reservation` → `Maintenance` · `user` → `owner` · **sin cupos**
+
+| El README diría…                                                        | Usá…               |
+| ----------------------------------------------------------------------- | ------------------ |
+| "el vehículo queda a nombre del usuario que lo registra"                | 3.4                |
+| "solo puede agendar mantenimientos para SUS vehículos"                  | 7.12               |
+| "no puede haber dos mantenimientos el mismo día para el mismo vehículo" | 7.13               |
+| "estados PENDING → IN_PROGRESS → DONE, en orden"                        | 8.6 (mismo patrón) |
+| "solo el dueño ve / edita / elimina su vehículo"                        | 10.1 · 11.2 · 12.2 |
+| "mis vehículos"                                                         | 9                  |
+| "no se puede eliminar un vehículo con mantenimientos"                   | 6                  |
+| ⚠️ Quitá todo lo de cupos (`availableSpots`, `quantity`, "máximo 5")    | —                  |
+
+### 🧭 ¿Otro tema? Respondé estas 5 preguntas
+
+1. ¿Cuál es el **padre** (lo que existe primero)? → hace de `Event`.
+2. ¿Cuál es el **hijo** que crea el usuario? → hace de `Reservation`.
+3. ¿El padre tiene algo que **se gasta** (cupos, stock, copias)? → **sí:** secciones 7 y 8 con cupos · **no:** quitá esas líneas.
+4. ¿El hijo tiene **estados**? ¿Qué acción lo **deshace** o lo **avanza**? → 8 · 8.5 · 8.6.
+5. ¿Qué depende de **quién** pregunta ("mis", "solo el dueño", "ADMIN o dueño")? → 2 · 9 · 10.
 
 ---
 
@@ -904,15 +982,21 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                           | Qué cambia                                          |
-| --- | ------------------------------------------------------------- | --------------------------------------------------- |
-| 7.1 | «máximo 3 reservas activas por usuario» (reservas, no cupos)  | `find` + `reduce` → `count()` y `>= 3`              |
-| 7.2 | «máximo 5 cupos activos en total» (sumando todos los eventos) | Quitar `event: { id }` del `where`                  |
-| 7.3 | «el administrador no tiene límite de cupos»                   | Envolver el límite en `if (!isAdmin)`               |
-| 7.4 | «un usuario no puede reservar dos veces el mismo evento»      | `count` de sus activas en el evento > 0 → 409       |
-| 7.5 | «máximo 5 cupos por reserva»                                  | `@Max(5)` en el DTO (el service no cambia)          |
-| 7.6 | «cada reserva corresponde a un solo cupo» (sin cantidad)      | DTO sin `quantity`; usar `1` y contar reservas      |
-| 7.7 | «solo se puede reservar para eventos de los próximos 7 días»  | Además de "no ocurrió": fecha del evento <= hoy + 7 |
+| #    | Si el parcial dice…                                                           | Qué cambia                                                                    |
+| ---- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 7.1  | «máximo 3 reservas activas por usuario» (reservas, no cupos)                  | `find` + `reduce` → `count()` y `>= 3`                                        |
+| 7.2  | «máximo 5 cupos activos en total» (sumando todos los eventos)                 | Quitar `event: { id }` del `where`                                            |
+| 7.3  | «el administrador no tiene límite de cupos»                                   | Envolver el límite en `if (!isAdmin)`                                         |
+| 7.4  | «un usuario no puede reservar dos veces el mismo evento»                      | `count` de sus activas en el evento > 0 → 409                                 |
+| 7.5  | «máximo 5 cupos por reserva»                                                  | `@Max(5)` en el DTO (el service no cambia)                                    |
+| 7.6  | «cada reserva corresponde a un solo cupo» (sin cantidad)                      | DTO sin `quantity`; usar `1` y contar reservas                                |
+| 7.7  | «solo se puede reservar para eventos de los próximos 7 días»                  | Además de "no ocurrió": fecha del evento <= hoy + 7                           |
+| 7.8  | «el préstamo vence a los 14 días» (guardar fecha límite)                      | Columna `dueDate` + calcularla al crear (hoy + 14)                            |
+| 7.9  | «no puede pedir prestado si tiene préstamos vencidos»                         | `count` de sus activas con `dueDate < ahora` (`LessThan`) → 400               |
+| 7.10 | «las inscripciones cierran 2 días antes del inicio»                           | Cierre = fecha del evento − 2 días; ahora > cierre → 400                      |
+| 7.11 | «guardar el total del pedido (precio × cantidad)»                             | Columna `price` en el padre y `total` en el hijo; `total = price * quantity`  |
+| 7.12 | «solo puede crear mantenimientos para SUS vehículos» (el padre debe ser suyo) | Relación `owner` en el padre + `if (event.owner.id !== currentUser.id)` → 403 |
+| 7.13 | «no puede haber dos mantenimientos el mismo día para el mismo vehículo»       | El hijo trae `date`; `count` con `Between(inicio del día, fin del día)` → 409 |
 
 <details>
 <summary><b>7.1 «máximo 3 reservas activas por usuario» (reservas, no cupos)</b></summary>
@@ -1264,6 +1348,430 @@ async create(createReservationDto: CreateReservationDto, currentUser: User) {
 
 </details>
 
+<details>
+<summary><b>7.8 «el préstamo vence a los 14 días» (guardar fecha límite)</b></summary>
+
+**Entity (`reservation.entity.ts`) — agregar:**
+
+```typescript
+// 🔄 CAMBIO: fecha límite de devolución
+@Column({ name: 'due_date', type: 'timestamp' })
+dueDate: Date;
+```
+
+**Service:**
+
+```typescript
+async create(createReservationDto: CreateReservationDto, currentUser: User) {
+    // transacción: si algo falla, no se guarda nada. Adentro usar manager
+    return await this.dataSource.transaction(async (manager) => {
+        const event = await manager.findOneBy(Event, { id: createReservationDto.eventId });
+        if (!event) {
+            throw new NotFoundException('No se encuentra el evento que buscas'); // "debe existir"
+        }
+        if (!event.isActive) {
+            throw new BadRequestException('El evento no está activo'); // "debe estar activo"
+        }
+        if (new Date(event.date) <= new Date()) {
+            throw new BadRequestException('El evento ya ocurrió'); // "no debe haber ocurrido"
+        }
+        if (event.availableSpots < createReservationDto.quantity) {
+            throw new BadRequestException('No hay suficientes cupos disponibles para este evento');
+        }
+        // 🔄 CAMBIO: "vence a los 14 días" → hoy + 14
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 14);
+        // "máximo 5 por usuario" → SUMAR quantity de sus activas en este evento
+        const activeReservations = await manager.find(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+            },
+        });
+        const activeSpots = activeReservations.reduce((total, reservation) => total + reservation.quantity, 0);
+        if (activeSpots + createReservationDto.quantity > 5) {
+            throw new BadRequestException(
+                `Solo puedes reservar ${5 - activeSpots} cupos más para este evento (máximo 5 por usuario)`,
+            );
+        }
+
+        event.availableSpots -= createReservationDto.quantity; // "descontar cupos"
+        await manager.save(event); // se guarda el EVENTO
+
+        const newReservation = manager.create(Reservation, {
+            quantity: createReservationDto.quantity,
+            dueDate, // 🔄 CAMBIO
+            event, // objeto, no id
+            user: currentUser, // del token
+            status: ReservationStatus.ACTIVE,
+        });
+        return await manager.save(newReservation);
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>7.9 «no puede pedir prestado si tiene préstamos vencidos»</b></summary>
+
+**Service:**
+
+```typescript
+// import { LessThan } from 'typeorm'; (y la columna dueDate de 7.8)
+async create(createReservationDto: CreateReservationDto, currentUser: User) {
+    // transacción: si algo falla, no se guarda nada. Adentro usar manager
+    return await this.dataSource.transaction(async (manager) => {
+        const event = await manager.findOneBy(Event, { id: createReservationDto.eventId });
+        if (!event) {
+            throw new NotFoundException('No se encuentra el evento que buscas'); // "debe existir"
+        }
+        if (!event.isActive) {
+            throw new BadRequestException('El evento no está activo'); // "debe estar activo"
+        }
+        if (new Date(event.date) <= new Date()) {
+            throw new BadRequestException('El evento ya ocurrió'); // "no debe haber ocurrido"
+        }
+        if (event.availableSpots < createReservationDto.quantity) {
+            throw new BadRequestException('No hay suficientes cupos disponibles para este evento');
+        }
+        // 🔄 CAMBIO: vencido = ACTIVO y dueDate ya pasó
+        const overdue = await manager.count(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                status: ReservationStatus.ACTIVE,
+                dueDate: LessThan(new Date()),
+            },
+        });
+        if (overdue > 0) {
+            throw new BadRequestException('Tienes préstamos vencidos: devuélvelos primero');
+        }
+        // "máximo 5 por usuario" → SUMAR quantity de sus activas en este evento
+        const activeReservations = await manager.find(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+            },
+        });
+        const activeSpots = activeReservations.reduce((total, reservation) => total + reservation.quantity, 0);
+        if (activeSpots + createReservationDto.quantity > 5) {
+            throw new BadRequestException(
+                `Solo puedes reservar ${5 - activeSpots} cupos más para este evento (máximo 5 por usuario)`,
+            );
+        }
+
+        event.availableSpots -= createReservationDto.quantity; // "descontar cupos"
+        await manager.save(event); // se guarda el EVENTO
+
+        const newReservation = manager.create(Reservation, {
+            quantity: createReservationDto.quantity,
+            event, // objeto, no id
+            user: currentUser, // del token
+            status: ReservationStatus.ACTIVE,
+        });
+        return await manager.save(newReservation);
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>7.10 «las inscripciones cierran 2 días antes del inicio»</b></summary>
+
+**Service:**
+
+```typescript
+async create(createReservationDto: CreateReservationDto, currentUser: User) {
+    // transacción: si algo falla, no se guarda nada. Adentro usar manager
+    return await this.dataSource.transaction(async (manager) => {
+        const event = await manager.findOneBy(Event, { id: createReservationDto.eventId });
+        if (!event) {
+            throw new NotFoundException('No se encuentra el evento que buscas'); // "debe existir"
+        }
+        if (!event.isActive) {
+            throw new BadRequestException('El evento no está activo'); // "debe estar activo"
+        }
+        // 🔄 CAMBIO: cierre = fecha del evento - 2 días (cubre también "ya ocurrió")
+        const closeDate = new Date(event.date);
+        closeDate.setDate(closeDate.getDate() - 2);
+        if (new Date() > closeDate) {
+            throw new BadRequestException('Las inscripciones cerraron 2 días antes del inicio');
+        }
+        if (event.availableSpots < createReservationDto.quantity) {
+            throw new BadRequestException('No hay suficientes cupos disponibles para este evento');
+        }
+        // "máximo 5 por usuario" → SUMAR quantity de sus activas en este evento
+        const activeReservations = await manager.find(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+            },
+        });
+        const activeSpots = activeReservations.reduce((total, reservation) => total + reservation.quantity, 0);
+        if (activeSpots + createReservationDto.quantity > 5) {
+            throw new BadRequestException(
+                `Solo puedes reservar ${5 - activeSpots} cupos más para este evento (máximo 5 por usuario)`,
+            );
+        }
+
+        event.availableSpots -= createReservationDto.quantity; // "descontar cupos"
+        await manager.save(event); // se guarda el EVENTO
+
+        const newReservation = manager.create(Reservation, {
+            quantity: createReservationDto.quantity,
+            event, // objeto, no id
+            user: currentUser, // del token
+            status: ReservationStatus.ACTIVE,
+        });
+        return await manager.save(newReservation);
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>7.11 «guardar el total del pedido (precio × cantidad)»</b></summary>
+
+**Entity (`event.entity.ts`) — agregar:**
+
+```typescript
+// 🔄 CAMBIO: precio (float → llega como number; numeric llegaría como string)
+@Column({ type: 'float' })
+price: number;
+```
+
+**Entity (`reservation.entity.ts`) — agregar:**
+
+```typescript
+// 🔄 CAMBIO: total guardado al momento de comprar
+@Column({ type: 'float' })
+total: number;
+```
+
+**Service:**
+
+```typescript
+async create(createReservationDto: CreateReservationDto, currentUser: User) {
+    // transacción: si algo falla, no se guarda nada. Adentro usar manager
+    return await this.dataSource.transaction(async (manager) => {
+        const event = await manager.findOneBy(Event, { id: createReservationDto.eventId });
+        if (!event) {
+            throw new NotFoundException('No se encuentra el evento que buscas'); // "debe existir"
+        }
+        if (!event.isActive) {
+            throw new BadRequestException('El evento no está activo'); // "debe estar activo"
+        }
+        if (new Date(event.date) <= new Date()) {
+            throw new BadRequestException('El evento ya ocurrió'); // "no debe haber ocurrido"
+        }
+        if (event.availableSpots < createReservationDto.quantity) {
+            throw new BadRequestException('No hay suficientes cupos disponibles para este evento');
+        }
+        // "máximo 5 por usuario" → SUMAR quantity de sus activas en este evento
+        const activeReservations = await manager.find(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+            },
+        });
+        const activeSpots = activeReservations.reduce((total, reservation) => total + reservation.quantity, 0);
+        if (activeSpots + createReservationDto.quantity > 5) {
+            throw new BadRequestException(
+                `Solo puedes reservar ${5 - activeSpots} cupos más para este evento (máximo 5 por usuario)`,
+            );
+        }
+
+        event.availableSpots -= createReservationDto.quantity; // "descontar cupos"
+        await manager.save(event); // se guarda el EVENTO
+
+        const newReservation = manager.create(Reservation, {
+            quantity: createReservationDto.quantity,
+            total: event.price * createReservationDto.quantity, // 🔄 CAMBIO: precio × cantidad
+            event, // objeto, no id
+            user: currentUser, // del token
+            status: ReservationStatus.ACTIVE,
+        });
+        return await manager.save(newReservation);
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>7.12 «solo puede crear mantenimientos para SUS vehículos» (el padre debe ser suyo)</b></summary>
+
+**Entity (`event.entity.ts`) — agregar:**
+
+```typescript
+// 🔄 CAMBIO: dueño del padre (ej. el dueño del vehículo)
+@ManyToOne(() => User, { nullable: false })
+@JoinColumn({ name: 'owner_id' })
+owner: User;
+```
+
+**Service:**
+
+```typescript
+async create(createReservationDto: CreateReservationDto, currentUser: User) {
+    // transacción: si algo falla, no se guarda nada. Adentro usar manager
+    return await this.dataSource.transaction(async (manager) => {
+        // 🔄 CAMBIO: findOne + relations para tener event.owner
+        const event = await manager.findOne(Event, {
+            where: { id: createReservationDto.eventId },
+            relations: { owner: true },
+        });
+        if (!event) {
+            throw new NotFoundException('No se encuentra el evento que buscas'); // "debe existir"
+        }
+        if (!event.isActive) {
+            throw new BadRequestException('El evento no está activo'); // "debe estar activo"
+        }
+        // 🔄 CAMBIO: el padre tiene que ser del usuario del token
+        if (event.owner.id !== currentUser.id) {
+            throw new ForbiddenException('Solo puedes hacerlo sobre tus propios registros');
+        }
+        if (new Date(event.date) <= new Date()) {
+            throw new BadRequestException('El evento ya ocurrió');
+        }
+        if (event.availableSpots < createReservationDto.quantity) {
+            throw new BadRequestException('No hay suficientes cupos disponibles para este evento');
+        }
+        // "máximo 5 por usuario" → SUMAR quantity de sus activas en este evento
+        const activeReservations = await manager.find(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+            },
+        });
+        const activeSpots = activeReservations.reduce((total, reservation) => total + reservation.quantity, 0);
+        if (activeSpots + createReservationDto.quantity > 5) {
+            throw new BadRequestException(
+                `Solo puedes reservar ${5 - activeSpots} cupos más para este evento (máximo 5 por usuario)`,
+            );
+        }
+
+        event.availableSpots -= createReservationDto.quantity; // "descontar cupos"
+        await manager.save(event); // se guarda el EVENTO
+
+        const newReservation = manager.create(Reservation, {
+            quantity: createReservationDto.quantity,
+            event, // objeto, no id
+            user: currentUser, // del token
+            status: ReservationStatus.ACTIVE,
+        });
+        return await manager.save(newReservation);
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>7.13 «no puede haber dos mantenimientos el mismo día para el mismo vehículo»</b></summary>
+
+**DTO (`create-reservation.dto.ts`):**
+
+```typescript
+export class CreateReservationDto {
+    @IsNotEmpty({ message: 'El ID del evento es obligatorio' })
+    @IsInt({ message: 'El ID del evento debe ser un número entero' })
+    @IsPositive({ message: 'El ID del evento debe ser un número positivo' })
+    eventId: number;
+
+    @IsInt({ message: 'La cantidad debe ser un numero entero' })
+    @IsPositive({ message: 'La cantidad de la reserva debe ser un número positivo' })
+    quantity: number;
+
+    // 🔄 CAMBIO: fecha del hijo (llega como string → @Type la convierte en Date)
+    @Type(() => Date)
+    @IsDate({ message: 'Debe ser una fecha válida' })
+    date: Date;
+}
+```
+
+**Entity (`reservation.entity.ts`) — agregar:**
+
+```typescript
+// 🔄 CAMBIO: fecha del mantenimiento / cita
+@Column({ type: 'timestamp' })
+date: Date;
+```
+
+**Service:**
+
+```typescript
+// import { Between } from 'typeorm';
+async create(createReservationDto: CreateReservationDto, currentUser: User) {
+    // transacción: si algo falla, no se guarda nada. Adentro usar manager
+    return await this.dataSource.transaction(async (manager) => {
+        const event = await manager.findOneBy(Event, { id: createReservationDto.eventId });
+        if (!event) {
+            throw new NotFoundException('No se encuentra el evento que buscas'); // "debe existir"
+        }
+        if (!event.isActive) {
+            throw new BadRequestException('El evento no está activo'); // "debe estar activo"
+        }
+        if (new Date(event.date) <= new Date()) {
+            throw new BadRequestException('El evento ya ocurrió'); // "no debe haber ocurrido"
+        }
+        if (event.availableSpots < createReservationDto.quantity) {
+            throw new BadRequestException('No hay suficientes cupos disponibles para este evento');
+        }
+        // 🔄 CAMBIO: rango del día [00:00 → 23:59:59] de la fecha pedida
+        const startOfDay = new Date(createReservationDto.date);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(createReservationDto.date);
+        endOfDay.setHours(23, 59, 59, 999);
+        const sameDay = await manager.count(Reservation, {
+            where: {
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+                date: Between(startOfDay, endOfDay),
+            },
+        });
+        if (sameDay > 0) {
+            throw new ConflictException('Ya hay una reserva para ese día');
+        }
+        // "máximo 5 por usuario" → SUMAR quantity de sus activas en este evento
+        const activeReservations = await manager.find(Reservation, {
+            where: {
+                user: { id: currentUser.id },
+                event: { id: event.id },
+                status: ReservationStatus.ACTIVE,
+            },
+        });
+        const activeSpots = activeReservations.reduce((total, reservation) => total + reservation.quantity, 0);
+        if (activeSpots + createReservationDto.quantity > 5) {
+            throw new BadRequestException(
+                `Solo puedes reservar ${5 - activeSpots} cupos más para este evento (máximo 5 por usuario)`,
+            );
+        }
+
+        event.availableSpots -= createReservationDto.quantity; // "descontar cupos"
+        await manager.save(event); // se guarda el EVENTO
+
+        const newReservation = manager.create(Reservation, {
+            quantity: createReservationDto.quantity,
+            date: createReservationDto.date, // 🔄 CAMBIO
+            event, // objeto, no id
+            user: currentUser, // del token
+            status: ReservationStatus.ACTIVE,
+        });
+        return await manager.save(newReservation);
+    });
+}
+```
+
+</details>
+
 ---
 
 ## 8. Cancelar reserva
@@ -1315,12 +1823,14 @@ async cancel(id: number, currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                         | Qué cambia                                                |
-| --- | ----------------------------------------------------------- | --------------------------------------------------------- |
-| 8.1 | «el administrador también puede cancelar cualquier reserva» | `if (!isAdmin && !isOwner)` → 403                         |
-| 8.2 | «solo se puede cancelar hasta 24 horas antes del evento»    | Límite = fecha del evento − N horas; ahora > límite → 400 |
-| 8.3 | «al cancelar, la reserva se elimina»                        | En vez de `status = CANCELLED`: `manager.delete`          |
-| 8.4 | «registrar la fecha de cancelación»                         | Columna `cancelledAt` (nullable) + `= new Date()`         |
+| #   | Si el parcial dice…                                                                    | Qué cambia                                                       |
+| --- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 8.1 | «el administrador también puede cancelar cualquier reserva»                            | `if (!isAdmin && !isOwner)` → 403                                |
+| 8.2 | «solo se puede cancelar hasta 24 horas antes del evento»                               | Límite = fecha del evento − N horas; ahora > límite → 400        |
+| 8.3 | «al cancelar, la reserva se elimina»                                                   | En vez de `status = CANCELLED`: `manager.delete`                 |
+| 8.4 | «registrar la fecha de cancelación»                                                    | Columna `cancelledAt` (nullable) + `= new Date()`                |
+| 8.5 | «devolver préstamo: marcarlo como devuelto y liberar la copia»                         | Estado nuevo `RETURNED` + `returnedAt`; sin la regla de fecha    |
+| 8.6 | «solo se puede cancelar si el pedido está PENDIENTE» / «pagar: solo si está pendiente» | Enum con los estados del flujo + `if (status !== PENDING)` → 409 |
 
 <details>
 <summary><b>8.1 «el administrador también puede cancelar cualquier reserva»</b></summary>
@@ -1480,6 +1990,128 @@ async cancel(id: number, currentUser: User) {
 
 </details>
 
+<details>
+<summary><b>8.5 «devolver préstamo: marcarlo como devuelto y liberar la copia»</b></summary>
+
+**Enum (`reservation.entity.ts`):**
+
+```typescript
+export enum ReservationStatus {
+    ACTIVE = 'ACTIVE',
+    CANCELLED = 'CANCELLED',
+    RETURNED = 'RETURNED', // 🔄 CAMBIO
+}
+```
+
+**Entity (`reservation.entity.ts`) — agregar:**
+
+```typescript
+// 🔄 CAMBIO: cuándo se devolvió (null = no devuelto)
+@Column({ name: 'returned_at', type: 'timestamp', nullable: true })
+returnedAt: Date;
+```
+
+**Controller:**
+
+```typescript
+@Patch(':id/return') // 🔄 CAMBIO: ruta nueva
+@HttpCode(HttpStatus.OK)
+@Permissions('return_reservation') // el nombre que traiga el seed
+markReturned(@Param('id', ParseIntPipe) id: number, @Req() req: AuthenticatedRequest) {
+    return this.reservationService.markReturned(id, req.user!);
+}
+```
+
+**Service:**
+
+```typescript
+async markReturned(id: number, currentUser: User) {
+    return await this.dataSource.transaction(async (manager) => {
+        const reservation = await manager.findOne(Reservation, {
+            where: { id },
+            relations: { user: true, event: true },
+        });
+        if (!reservation) {
+            throw new NotFoundException('Préstamo no encontrado');
+        }
+        if (reservation.user.id !== currentUser.id) {
+            throw new ForbiddenException('Este préstamo no te pertenece');
+        }
+        // 🔄 CAMBIO: solo se devuelve uno ACTIVO (ni devuelto ni cancelado)
+        if (reservation.status !== ReservationStatus.ACTIVE) {
+            throw new ConflictException('Este préstamo ya fue devuelto');
+        }
+        // 🔄 CAMBIO: sin "el evento ya ocurrió" (se puede devolver tarde)
+        reservation.event.availableSpots += reservation.quantity; // la copia vuelve
+        await manager.save(reservation.event);
+        reservation.status = ReservationStatus.RETURNED; // 🔄 CAMBIO
+        reservation.returnedAt = new Date(); // 🔄 CAMBIO
+        await manager.save(reservation);
+        return { message: 'Préstamo devuelto correctamente' };
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>8.6 «solo se puede cancelar si el pedido está PENDIENTE» / «pagar: solo si está pendiente»</b></summary>
+
+**Enum (`reservation.entity.ts`):**
+
+```typescript
+// 🔄 CAMBIO: estados del flujo (el create pone PENDING en vez de ACTIVE)
+export enum ReservationStatus {
+    PENDING = 'PENDING',
+    PAID = 'PAID',
+    SHIPPED = 'SHIPPED',
+    CANCELLED = 'CANCELLED',
+}
+```
+
+**Service:**
+
+```typescript
+async cancel(id: number, currentUser: User) {
+    return await this.dataSource.transaction(async (manager) => {
+        const reservation = await manager.findOne(Reservation, {
+            where: { id },
+            relations: { user: true, event: true },
+        });
+        if (!reservation) {
+            throw new NotFoundException('Pedido no encontrado');
+        }
+        if (reservation.user.id !== currentUser.id) {
+            throw new ForbiddenException('Este pedido no te pertenece');
+        }
+        // 🔄 CAMBIO: "solo si está PENDIENTE" (cubre ya cancelado, pagado, enviado)
+        if (reservation.status !== ReservationStatus.PENDING) {
+            throw new ConflictException(`Solo se puede cancelar un pedido pendiente (estado: ${reservation.status})`);
+        }
+        reservation.event.availableSpots += reservation.quantity; // devolver stock
+        await manager.save(reservation.event);
+        reservation.status = ReservationStatus.CANCELLED;
+        await manager.save(reservation);
+        return { message: 'Pedido cancelado correctamente' };
+    });
+}
+
+// 🔄 CAMBIO: avanzar el flujo → solo desde el estado anterior
+async pay(id: number) {
+    const reservation = await this.reservationRepository.findOneBy({ id });
+    if (!reservation) {
+        throw new NotFoundException('Pedido no encontrado');
+    }
+    if (reservation.status !== ReservationStatus.PENDING) {
+        throw new ConflictException('Solo se puede pagar un pedido pendiente');
+    }
+    reservation.status = ReservationStatus.PAID;
+    return await this.reservationRepository.save(reservation);
+}
+```
+
+</details>
+
 ---
 
 ## 9. Mis reservas (`GET /user`)
@@ -1513,13 +2145,14 @@ async findMine(currentUser: User) {
 
 ### 🔄 Si el parcial lo cambia
 
-| #   | Si el parcial dice…                                            | Qué cambia                                                     |
-| --- | -------------------------------------------------------------- | -------------------------------------------------------------- |
-| 9.1 | «permitir filtrar mis reservas por estado» (`?status=ACTIVE`)  | `@Query('status')` + `...(status && { status })` en el `where` |
-| 9.2 | «mostrar solo mis reservas activas»                            | `status: ReservationStatus.ACTIVE` en el `where`               |
-| 9.3 | «mostrar solo reservas de eventos que no han ocurrido»         | `event: { date: MoreThan(new Date()) }` (import de `typeorm`)  |
-| 9.4 | «ordenadas de la más reciente a la más antigua»                | `order: { createdAt: 'DESC' }`                                 |
-| 9.5 | «el administrador puede ver las reservas de cualquier usuario» | `GET /user/:userId` con `@Param` (antes de `:id`)              |
+| #   | Si el parcial dice…                                            | Qué cambia                                                                    |
+| --- | -------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| 9.1 | «permitir filtrar mis reservas por estado» (`?status=ACTIVE`)  | `@Query('status')` + `...(status && { status })` en el `where`                |
+| 9.2 | «mostrar solo mis reservas activas»                            | `status: ReservationStatus.ACTIVE` en el `where`                              |
+| 9.3 | «mostrar solo reservas de eventos que no han ocurrido»         | `event: { date: MoreThan(new Date()) }` (import de `typeorm`)                 |
+| 9.4 | «ordenadas de la más reciente a la más antigua»                | `order: { createdAt: 'DESC' }`                                                |
+| 9.5 | «el administrador puede ver las reservas de cualquier usuario» | `GET /user/:userId` con `@Param` (antes de `:id`)                             |
+| 9.6 | «el creador del curso puede ver los inscritos de su curso»     | `GET /event/:eventId`: el padre debe ser suyo (o ADMIN) y se listan sus hijos |
 
 <details>
 <summary><b>9.1 «permitir filtrar mis reservas por estado» (`?status=ACTIVE`)</b></summary>
@@ -1632,6 +2265,47 @@ async findByUser(userId: number) {
     return await this.reservationRepository.find({
         where: { user: { id: userId } }, // 🔄 CAMBIO: el id viene de la URL, no del token
         relations: { event: true },
+    });
+}
+```
+
+</details>
+
+<details>
+<summary><b>9.6 «el creador del curso puede ver los inscritos de su curso»</b></summary>
+
+**Controller:**
+
+```typescript
+// 🔄 CAMBIO: ruta fija → ANTES de @Get(':id')
+@Get('event/:eventId')
+@HttpCode(HttpStatus.OK)
+@Permissions('read_reservation')
+findByEvent(@Param('eventId', ParseIntPipe) eventId: number, @Req() req: AuthenticatedRequest) {
+    return this.reservationService.findByEvent(eventId, req.user!);
+}
+```
+
+**Service:**
+
+```typescript
+// necesita la relación createdBy en el evento (variante 3.4)
+async findByEvent(eventId: number, currentUser: User) {
+    const event = await this.eventRepository.findOne({
+        where: { id: eventId },
+        relations: { createdBy: true },
+    });
+    if (!event) {
+        throw new NotFoundException('No se encuentra el evento que buscas');
+    }
+    // 🔄 CAMBIO: solo el creador del evento o el ADMIN
+    const isAdmin = currentUser.role?.name === 'admin';
+    if (!isAdmin && event.createdBy.id !== currentUser.id) {
+        throw new ForbiddenException('Solo el creador puede ver estas reservas');
+    }
+    return await this.reservationRepository.find({
+        where: { event: { id: eventId } },
+        relations: { user: true }, // quién se inscribió
     });
 }
 ```
